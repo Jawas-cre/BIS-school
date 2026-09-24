@@ -4,7 +4,7 @@
 // While the site runs, it checks GitHub for a newer version every few minutes and installs it by
 // itself (see update.mjs); refreshing the browser then shows the new version.
 import { spawn } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { createWriteStream, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { askOwnerDetails, EXIT } from "./owner.mjs";
@@ -17,6 +17,8 @@ const ALREADY_RUNNING = 10;
 const UPDATE_EVERY_MS = (Number(process.env.BIS_UPDATE_MINUTES) || 5) * 60_000;
 const DATABASE = path.join("prisma", "dev.db");
 const NEXT = path.join("node_modules", "next", "dist", "bin", "next");
+/** Where the output of a failed build is kept, so the whole error can be sent to someone who helps. */
+const BUILD_LOG = "build-log.txt";
 process.env.BIS_LAUNCHER = "1";
 
 function say(text) {
@@ -35,6 +37,30 @@ function run(command, args) {
       .on("exit", (code) => resolve(code === 0))
       .on("error", () => resolve(false));
   });
+}
+
+/** Like run(), but also copies everything the command prints into a file. */
+function runLogged(command, args, file) {
+  return new Promise((resolve) => {
+    const log = createWriteStream(file);
+    const child = spawn(command, args, { stdio: ["inherit", "pipe", "pipe"], shell: true });
+    child.stdout.on("data", (chunk) => {
+      process.stdout.write(chunk);
+      log.write(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      process.stderr.write(chunk);
+      log.write(chunk);
+    });
+    const done = (ok) => log.end(() => resolve(ok));
+    child.on("exit", (code) => done(code === 0)).on("error", () => done(false));
+  });
+}
+
+/** Opens a text file in Notepad (Windows) or TextEdit (macOS) so it can be read and sent. */
+function showFile(file) {
+  const [command, args] = process.platform === "win32" ? ["notepad", [file]] : process.platform === "darwin" ? ["open", ["-e", file]] : ["xdg-open", [file]];
+  spawn(command, args, { stdio: "ignore", detached: true }).on("error", () => {}).unref();
 }
 
 /** Settings from .env that this launcher reads itself (e.g. BIS_UPDATES). Real environment variables win. */
@@ -107,11 +133,28 @@ async function installPackages() {
   return run("npm", ["install", "--no-audit", "--no-fund"]);
 }
 
+/**
+ * Builds the site when its files changed since the last build. A failed build is tried once more from
+ * scratch (a half-written .next folder, or a file briefly locked by antivirus, can break it); if that
+ * fails too, its whole output stays in build-log.txt and opens on screen.
+ */
 async function buildIfNeeded() {
   const buildId = path.join(".next", "BUILD_ID");
   if (existsSync(buildId) && newestSource() <= statSync(buildId).mtimeMs) return true;
   say("Building the site. This takes a minute or two…");
-  return run("npm", ["run", "build"]);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    if (await runLogged("npm", ["run", "build"], BUILD_LOG)) {
+      rmSync(BUILD_LOG, { force: true });
+      return true;
+    }
+    if (attempt === 1) {
+      say("The build failed. Cleaning up and trying once more…");
+      rmSync(".next", { recursive: true, force: true });
+    }
+  }
+  say(`The whole error is saved in ${BUILD_LOG} in the BIS Learn folder (it opens now). Send that file to the person helping you.`);
+  showFile(BUILD_LOG);
+  return false;
 }
 
 /** Gets the site ready after an update: packages, database changes, then a new build. */
@@ -176,7 +219,7 @@ if (!noUpdates) {
   }
 }
 
-if (!(await buildIfNeeded())) stop("Building the site failed. Take a photo of this window and send it to the person helping you.");
+if (!(await buildIfNeeded())) stop(`Building the site failed. Send the file ${BUILD_LOG} (or a photo of this window) to the person helping you.`);
 
 // ─── Run the site, and update it while it runs ──────────────────────────────
 

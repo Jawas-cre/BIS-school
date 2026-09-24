@@ -48,3 +48,4 @@ next-env.d.ts
 # written by the automatic updater (scripts/update.mjs)
 /.bis-version.json
 /bis-learn.zip
+/build-log.txt
