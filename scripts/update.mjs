@@ -8,8 +8,8 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 
 export const VERSION_FILE = ".bis-version.json";
-const REPO = process.env.BIS_UPDATE_REPO || "Jawas-cre/BIS-school";
-const BRANCH = process.env.BIS_UPDATE_BRANCH || "main";
+export const REPO = process.env.BIS_UPDATE_REPO || "Jawas-cre/BIS-school";
+export const BRANCH = process.env.BIS_UPDATE_BRANCH || "main";
 
 // Never written by an update: your data and settings, generated folders, and the start-here files,
 // which are still running while the update happens (Windows and bash read them line by line).
@@ -52,28 +52,34 @@ function get(url, headers = {}, redirects = 3) {
   });
 }
 
-// Versions we already know are older than this copy (main is behind it), so we don't ask again.
+/** The newest commit on the branch. Uses the git address rather than the GitHub API, which limits how often it may be asked. */
+async function latestCommit() {
+  const refs = (await get(`https://github.com/${REPO}.git/info/refs?service=git-upload-pack`)).toString("latin1");
+  // Lines look like "<4-digit length><sha> refs/heads/<branch>".
+  const line = refs.split("\n").find((l) => l.endsWith(` refs/heads/${BRANCH}`));
+  const sha = line?.slice(0, line.indexOf(" ")).slice(-40);
+  if (!sha || !/^[0-9a-f]{40}$/.test(sha)) throw new Error(`GitHub has no branch called ${BRANCH}`);
+  return sha;
+}
+
+// Versions we already know are not newer than this copy (e.g. main is behind a copy made from a newer branch).
 const notNewer = new Set();
 
-/** The newest commit on GitHub if it is newer than this copy, otherwise null. Throws when offline. */
+/**
+ * Downloads the newest version if it is newer than this copy, and returns it with its files; otherwise
+ * null. Throws when offline. "Newer" compares commit dates, so a copy made before its changes reached
+ * main isn't replaced by the older main.
+ */
 export async function findUpdate() {
   const current = currentVersion();
-  const sha = (await get(`https://api.github.com/repos/${REPO}/commits/${BRANCH}`, { Accept: "application/vnd.github.sha" })).toString().trim();
-  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("Unexpected answer from GitHub");
+  const sha = await latestCommit();
   if (current?.sha === sha || notNewer.has(sha)) return null;
-  if (current?.sha) {
-    try {
-      const compare = JSON.parse((await get(`https://api.github.com/repos/${REPO}/compare/${current.sha}...${sha}`, { Accept: "application/vnd.github+json" })).toString());
-      // "behind": this copy is newer than main (e.g. installed from a zip made before it was merged).
-      if (compare.status === "behind" || compare.status === "identical") {
-        notNewer.add(sha);
-        return null;
-      }
-    } catch {
-      // This copy's version is unknown to GitHub: take main.
-    }
+  const { files, committedAt } = await download(sha);
+  if (current?.committedAt && Date.parse(committedAt) <= Date.parse(current.committedAt)) {
+    notNewer.add(sha);
+    return null;
   }
-  return { sha, short: sha.slice(0, 7) };
+  return { sha, short: sha.slice(0, 7), committedAt, files };
 }
 
 function parsePax(data) {
@@ -105,22 +111,23 @@ function untar(buffer) {
     const prefix = text(header, 345, 500);
     const name = prefix ? `${prefix}/${text(header, 0, 100)}` : text(header, 0, 100);
     const mode = parseInt(text(header, 100, 108).trim() || "0", 8);
+    const mtime = parseInt(text(header, 136, 148).trim() || "0", 8);
     const data = buffer.subarray(offset + 512, offset + 512 + size);
     offset += 512 + Math.ceil(size / 512) * 512;
     if (type === "x") longName = parsePax(data).path ?? null;
     else if (type === "L") longName = text(data, 0, data.length);
     else if (type === "g") continue;
     else {
-      if (type === "0" || type === "\0") files.push({ name: longName ?? name, mode, data: Buffer.from(data) });
+      if (type === "0" || type === "\0") files.push({ name: longName ?? name, mode, mtime, data: Buffer.from(data) });
       longName = null;
     }
   }
   return files;
 }
 
-/** Downloads a version and returns its files (paths relative to the project folder). */
-export async function download(update) {
-  const archive = gunzipSync(await get(`https://codeload.github.com/${REPO}/tar.gz/${update.sha}`));
+/** Downloads a version: its files (paths relative to the project folder) and its commit date. */
+async function download(sha) {
+  const archive = gunzipSync(await get(`https://codeload.github.com/${REPO}/tar.gz/${sha}`));
   const files = [];
   for (const file of untar(archive)) {
     // GitHub puts everything in one top folder, e.g. Owner-Repo-abc1234/.
@@ -129,14 +136,17 @@ export async function download(update) {
     files.push({ ...file, name });
   }
   if (!files.some((f) => f.name === "package.json")) throw new Error("The download is incomplete");
-  return files;
+  // GitHub stamps every file with the commit's date.
+  const committedAt = new Date(Math.max(...files.map((f) => f.mtime)) * 1000).toISOString();
+  return { files, committedAt };
 }
 
 /**
  * Writes the new version's files over this copy and removes files the new version no longer has.
  * Only files whose content changed are written. Returns the changed files and what undo() needs.
  */
-export function install(update, files) {
+export function install(update) {
+  const { files } = update;
   const versionBefore = existsSync(VERSION_FILE) ? readFileSync(VERSION_FILE) : null;
   const backup = [];
   const changed = [];
@@ -157,7 +167,8 @@ export function install(update, files) {
     rmSync(name);
     changed.push(name);
   }
-  writeFileSync(VERSION_FILE, JSON.stringify({ repo: REPO, branch: BRANCH, sha: update.sha, installedAt: new Date().toISOString(), files: [...next] }, null, 2));
+  const version = { repo: REPO, branch: BRANCH, sha: update.sha, committedAt: update.committedAt, installedAt: new Date().toISOString(), files: [...next] };
+  writeFileSync(VERSION_FILE, JSON.stringify(version, null, 2));
   return { changed, backup, versionBefore };
 }
 

@@ -8,13 +8,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { askOwnerDetails, EXIT } from "./owner.mjs";
-import { download, findUpdate, install, undo, updatesOff } from "./update.mjs";
+import { findUpdate, install, undo, updatesOff } from "./update.mjs";
 
 const PORT = Number(process.env.PORT) || 3000;
 const URL = `http://localhost:${PORT}`;
 /** Exit code telling the start-here files that the site was already running and was only opened. */
 const ALREADY_RUNNING = 10;
-const UPDATE_EVERY_MS = 5 * 60_000;
+const UPDATE_EVERY_MS = (Number(process.env.BIS_UPDATE_MINUTES) || 5) * 60_000;
 const DATABASE = path.join("prisma", "dev.db");
 const NEXT = path.join("node_modules", "next", "dist", "bin", "next");
 process.env.BIS_LAUNCHER = "1";
@@ -120,8 +120,8 @@ async function prepareUpdate() {
 }
 
 /** Installs a downloaded version; if it can't be built, puts the previous version back. */
-async function applyUpdate(update, files) {
-  const result = install(update, files);
+async function applyUpdate(update) {
+  const result = install(update);
   if (result.changed.length === 0) return true;
   say(`Installing the new version (${result.changed.length} files changed)…`);
   if (await prepareUpdate()) return true;
@@ -168,8 +168,8 @@ if (!noUpdates) {
   try {
     const update = await findUpdate();
     if (update) {
-      say(`A new version of BIS Learn is available (${update.short}). Downloading it…`);
-      if (await applyUpdate(update, await download(update))) say("✓ Updated to the newest version.");
+      say(`A new version of BIS Learn is available (${update.short}).`);
+      if (await applyUpdate(update)) say("✓ Updated to the newest version.");
     }
   } catch (error) {
     say(`Could not check for updates right now (${error.message}). Starting the version you have.`);
@@ -227,19 +227,18 @@ function showUpdatingPage() {
 
 async function updateWhileRunning() {
   if (updating || stopping || !server) return;
-  let update, files;
+  let update;
   try {
     update = await findUpdate();
-    if (!update) return;
-    files = await download(update);
   } catch {
     return; // offline or GitHub busy: try again next time
   }
+  if (!update || updating || stopping || !server) return;
   updating = true;
   say(`A new version of BIS Learn is available (${update.short}). Updating now — the site is back in a minute or two.`);
   await stopServer();
   const hideUpdatingPage = showUpdatingPage();
-  const updated = await applyUpdate(update, files);
+  const updated = await applyUpdate(update);
   await hideUpdatingPage();
   updating = false;
   if (stopping) process.exit(0);
