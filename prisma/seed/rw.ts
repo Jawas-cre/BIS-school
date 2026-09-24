@@ -1,4 +1,4 @@
-// Original Digital-SAT-style Reading & Writing questions.
+// Original English questions: reading comprehension, vocabulary, linking words, punctuation and grammar.
 // Each item lists the correct choice first; choices are shuffled when seeded.
 import { mcq, mulberry32, type GenQuestion } from "./math";
 
@@ -380,15 +380,28 @@ const CONVENTION_ITEMS: [string, string, [string, string, string], string, strin
   ["The data from the survey ______ that most residents support the new park.", "suggest", ["suggests that it", "suggesting", "to suggest"], "The sentence needs a main verb; \"data\" is treated as plural in formal writing, so \"suggest\" is correct.", "Form, Structure, and Sense", "HARD"],
 ];
 
-export function generateRW(seed = 2024): GenQuestion[] {
+const ENGLISH_TOPIC: Record<string, string> = {
+  "Central Ideas and Details": "Reading comprehension",
+  "Command of Evidence": "Reading comprehension",
+  Inferences: "Reading comprehension",
+  "Text Structure and Purpose": "Reading comprehension",
+  "Cross-Text Connections": "Reading comprehension",
+  "Rhetorical Synthesis": "Writing",
+  "Words in Context": "Vocabulary",
+  Transitions: "Linking words",
+  Boundaries: "Punctuation",
+  "Form, Structure, and Sense": "Grammar",
+};
+
+export function generateEnglish(seed = 2024): GenQuestion[] {
   const rng = mulberry32(seed);
   const out: GenQuestion[] = [];
-  const add = (q: Omit<GenQuestion, "section" | "type" | "choices" | "answer"> & { correct: string; wrong: string[] }) => {
+  const add = (q: { skill: string; difficulty: GenQuestion["difficulty"]; passage?: string; stem: string; explanation: string; correct: string; wrong: string[] }) => {
     const { choices, answer } = mcq(rng, q.correct, q.wrong, () => "None of the above");
     out.push({
-      section: "RW",
+      subject: "English",
       type: "MCQ",
-      skill: q.skill,
+      topic: ENGLISH_TOPIC[q.skill] ?? q.skill,
       difficulty: q.difficulty,
       passage: q.passage,
       stem: q.stem,

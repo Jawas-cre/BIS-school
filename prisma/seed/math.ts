@@ -1,12 +1,12 @@
-// Parameterised generators for original Digital-SAT-style math questions.
+// Parameterised generators for original mathematics questions.
 // Every generator computes the answer key from the same numbers it prints,
 // so keys and explanations are always consistent.
 
 export type GenQuestion = {
-  section: "MATH" | "RW";
-  skill: string;
+  subject: string;
+  topic: string;
   difficulty: "EASY" | "MEDIUM" | "HARD";
-  type: "MCQ" | "SPR";
+  type: "MCQ" | "SHORT";
   passage?: string;
   stem: string;
   choices?: string[];
@@ -84,7 +84,35 @@ const nonZero = (rng: Rng, lo: number, hi: number) => {
 
 type Gen = (rng: Rng) => GenQuestion;
 
-const M = (q: Omit<GenQuestion, "section">): GenQuestion => ({ section: "MATH", ...q });
+// Generators are written against fine-grained skills; the bank groups them into broader topics.
+const MATH_TOPIC: Record<string, string> = {
+  "Linear equations in one variable": "Linear equations",
+  "Linear equations in two variables": "Linear equations",
+  "Systems of linear equations": "Linear equations",
+  "Linear inequalities": "Linear equations",
+  "Linear functions": "Functions",
+  "Nonlinear functions": "Functions",
+  "Nonlinear equations": "Quadratics & polynomials",
+  "Equivalent expressions": "Quadratics & polynomials",
+  "Ratios, rates, and proportions": "Ratios & percentages",
+  Percentages: "Ratios & percentages",
+  "One-variable data": "Statistics & probability",
+  "Two-variable data": "Statistics & probability",
+  Probability: "Statistics & probability",
+  "Area and volume": "Geometry",
+  "Lines, angles, and triangles": "Geometry",
+  Circles: "Geometry",
+  "Right triangles and trigonometry": "Trigonometry",
+};
+
+type MathDraft = Omit<GenQuestion, "subject" | "topic" | "type"> & { skill: string; type: "MCQ" | "SPR" };
+
+const M = ({ skill, type, ...q }: MathDraft): GenQuestion => ({
+  subject: "Mathematics",
+  topic: MATH_TOPIC[skill] ?? skill,
+  type: type === "SPR" ? "SHORT" : "MCQ",
+  ...q,
+});
 
 // ─── Algebra ────────────────────────────────────────────────────────────────
 
@@ -793,7 +821,7 @@ export const MATH_GENERATORS: Gen[] = [
   circleCenter,
 ];
 
-export function generateMath(perGenerator: number, seed = 1600): GenQuestion[] {
+export function generateMath(perGenerator: number, seed = 1234): GenQuestion[] {
   const rng = mulberry32(seed);
   const seen = new Set<string>();
   const out: GenQuestion[] = [];

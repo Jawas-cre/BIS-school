@@ -4,13 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser, visibleTo } from "@/lib/auth";
-import { finalizeAttempt, GRACE_SECONDS, isBreakBoundary, loadAttempt, parseJson, secondsLeft } from "@/lib/tests";
+import { finalizeAttempt, GRACE_SECONDS, loadAttempt, parseJson, secondsLeft } from "@/lib/tests";
 
 export async function startTest(testId: string) {
   const user = await requireUser();
   const test = await db.test.findFirst({ where: { id: testId, published: true, ...visibleTo(user.centerId) } });
   if (!test) throw new Error("Test not found");
-  const open = await db.testAttempt.findFirst({ where: { userId: user.id, testId, status: { in: ["IN_PROGRESS", "BREAK"] } } });
+  const open = await db.testAttempt.findFirst({ where: { userId: user.id, testId, status: "IN_PROGRESS" } });
   const attempt = open ?? (await db.testAttempt.create({ data: { userId: user.id, testId, moduleStarted: new Date() } }));
   redirect(`/tests/attempt/${attempt.id}`);
 }
@@ -34,7 +34,7 @@ export async function saveProgress(attemptId: string, answers: Record<string, st
   const merged = parseJson<Record<string, string>>(attempt.answers, {});
   for (const [id, value] of Object.entries(answers)) {
     if (!allowed.has(id)) continue;
-    if (value) merged[id] = String(value).slice(0, 12);
+    if (value) merged[id] = String(value).slice(0, 40);
     else delete merged[id];
   }
   const keepFlags = parseJson<string[]>(attempt.flagged, []).filter((id) => !allowed.has(id));
@@ -53,7 +53,7 @@ export async function submitModule(attemptId: string, answers: Record<string, st
   if (attempt.moduleIndex < attempt.test.modules.length - 1) {
     await db.testAttempt.update({
       where: { id: attempt.id },
-      data: { moduleIndex: attempt.moduleIndex + 1, moduleStarted: new Date(), status: isBreakBoundary(attempt) ? "BREAK" : "IN_PROGRESS" },
+      data: { moduleIndex: attempt.moduleIndex + 1, moduleStarted: new Date() },
     });
     return { done: false };
   }
@@ -61,13 +61,6 @@ export async function submitModule(attemptId: string, answers: Record<string, st
   revalidatePath("/tests");
   revalidatePath("/dashboard");
   return { done: true };
-}
-
-export async function resumeFromBreak(attemptId: string) {
-  const attempt = await activeAttempt(attemptId);
-  if (attempt.status === "BREAK") {
-    await db.testAttempt.update({ where: { id: attempt.id }, data: { status: "IN_PROGRESS", moduleStarted: new Date() } });
-  }
 }
 
 /** Server-side guard used when the page loads: an expired module is submitted automatically. */

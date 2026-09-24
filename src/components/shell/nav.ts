@@ -16,6 +16,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Overview", icon: "LayoutDashboard" },
   { href: "/admin/students", label: "Students", icon: "Users" },
   { href: "/admin/groups", label: "Groups", icon: "Layers" },
+  { href: "/admin/subjects", label: "Subjects", icon: "Shapes" },
   { href: "/admin/questions", label: "Questions", icon: "ListChecks" },
   { href: "/admin/tests", label: "Mock Tests", icon: "ClipboardCheck" },
   { href: "/admin/roadmap", label: "Roadmap", icon: "Map" },

@@ -19,6 +19,10 @@ async function ownGroup(centerId: string, id: string | undefined | null) {
   return db.group.findFirst({ where: { id, centerId } });
 }
 
+async function ownGroups(centerId: string, ids: string[]) {
+  return ids.length ? db.group.findMany({ where: { id: { in: ids }, centerId } }) : [];
+}
+
 async function ownBranch(centerId: string, id: string | undefined | null) {
   if (!id) return null;
   return db.branch.findFirst({ where: { id, centerId } });
@@ -33,25 +37,26 @@ export async function createStudent(_: ActionState, fd: FormData): Promise<Actio
       name: z.string().trim().min(2, "Enter the student's full name").max(80),
       email: z.string().trim().toLowerCase().email("Enter a valid email"),
       password: z.string().max(64).optional(),
-      groupId: z.string().optional(),
       phone: z.string().trim().max(30).optional(),
+      grade: z.string().trim().max(40).optional(),
     })
     .safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   if (await db.user.findUnique({ where: { email: d.email } })) return { error: "That email is already registered" };
   const password = d.password && d.password.length >= 8 ? d.password : tempPassword();
-  const group = await ownGroup(staff.centerId, d.groupId);
+  const groups = await ownGroups(staff.centerId, fd.getAll("groupIds").map(String));
   await db.user.create({
     data: {
       name: d.name,
       email: d.email,
       phone: d.phone || null,
+      grade: d.grade || null,
       passwordHash: await bcrypt.hash(password, 10),
       role: "STUDENT",
       centerId: staff.centerId,
-      groupId: group?.id ?? null,
-      branchId: group?.branchId ?? null,
+      branchId: groups[0]?.branchId ?? null,
+      memberships: { create: groups.map((g) => ({ groupId: g.id })) },
     },
   });
   revalidatePath("/admin/students");
@@ -64,12 +69,21 @@ export async function updateStudent(studentId: string, _: ActionState, fd: FormD
   if (!student) return { error: "Student not found" };
   const name = String(fd.get("name") ?? "").trim();
   if (name.length < 2) return { error: "Enter the student's full name" };
-  const group = await ownGroup(staff.centerId, String(fd.get("groupId") ?? ""));
+  const groups = await ownGroups(staff.centerId, fd.getAll("groupIds").map(String));
   const branch = await ownBranch(staff.centerId, String(fd.get("branchId") ?? ""));
-  await db.user.update({
-    where: { id: student.id },
-    data: { name, groupId: group?.id ?? null, branchId: branch?.id ?? group?.branchId ?? null, phone: String(fd.get("phone") ?? "").trim() || null },
-  });
+  await db.$transaction([
+    db.user.update({
+      where: { id: student.id },
+      data: {
+        name,
+        branchId: branch?.id ?? groups[0]?.branchId ?? null,
+        phone: String(fd.get("phone") ?? "").trim() || null,
+        grade: String(fd.get("grade") ?? "").trim().slice(0, 40) || null,
+      },
+    }),
+    db.groupMember.deleteMany({ where: { userId: student.id, groupId: { notIn: groups.map((g) => g.id) } } }),
+    ...groups.map((g) => db.groupMember.upsert({ where: { groupId_userId: { groupId: g.id, userId: student.id } }, create: { groupId: g.id, userId: student.id }, update: {} })),
+  ]);
   revalidatePath(`/admin/students/${student.id}`);
   revalidatePath("/admin/students");
   return { ok: "Saved" };
@@ -95,6 +109,7 @@ export async function removeStudent(studentId: string) {
 
 const GroupInput = z.object({
   name: z.string().trim().min(2, "Enter a group name").max(60),
+  subjectId: z.string().optional(),
   branchId: z.string().optional(),
   teacherId: z.string().optional(),
   schedule: z.string().trim().max(60).optional(),
@@ -104,11 +119,12 @@ async function groupData(centerId: string, fd: FormData) {
   const parsed = GroupInput.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message } as const;
   const d = parsed.data;
-  const [branch, teacher] = await Promise.all([
+  const [branch, teacher, subject] = await Promise.all([
     ownBranch(centerId, d.branchId),
     d.teacherId ? db.user.findFirst({ where: { id: d.teacherId, centerId, role: { in: ["TEACHER", "CENTER_ADMIN"] } } }) : null,
+    d.subjectId ? db.subject.findFirst({ where: { id: d.subjectId, OR: [{ centerId: null }, { centerId }] } }) : null,
   ]);
-  return { data: { name: d.name, schedule: d.schedule || null, branchId: branch?.id ?? null, teacherId: teacher?.id ?? null } } as const;
+  return { data: { name: d.name, schedule: d.schedule || null, branchId: branch?.id ?? null, teacherId: teacher?.id ?? null, subjectId: subject?.id ?? null } } as const;
 }
 
 export async function createGroup(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -144,14 +160,15 @@ export async function addToGroup(groupId: string, _: ActionState, fd: FormData):
   const studentId = String(fd.get("studentId") ?? "");
   const student = await db.user.findFirst({ where: { id: studentId, centerId: staff.centerId, role: "STUDENT" } });
   if (!student) return { error: "Choose a student" };
-  await db.user.update({ where: { id: student.id }, data: { groupId: group.id, branchId: group.branchId ?? student.branchId } });
+  await db.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: student.id } }, create: { groupId: group.id, userId: student.id }, update: {} });
+  if (!student.branchId && group.branchId) await db.user.update({ where: { id: student.id }, data: { branchId: group.branchId } });
   revalidatePath(`/admin/groups/${groupId}`);
   return { ok: `${student.name} added` };
 }
 
 export async function removeFromGroup(groupId: string, studentId: string) {
   const staff = await requireStaff();
-  await db.user.updateMany({ where: { id: studentId, groupId, centerId: staff.centerId }, data: { groupId: null } });
+  await db.groupMember.deleteMany({ where: { groupId, userId: studentId, group: { centerId: staff.centerId } } });
   revalidatePath(`/admin/groups/${groupId}`);
 }
 

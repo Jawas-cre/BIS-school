@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { bankQuery, filtersToQuery, parseFilters } from "@/lib/questions";
-import { parseChoices, SECTION_LABEL, type Section } from "@/lib/sat";
+import { parseChoices } from "@/lib/quiz";
+import { SubjectBadge } from "@/components/subject-icon";
 import { DifficultyBadge, Badge } from "@/components/ui/badge";
 import { QuestionBody } from "@/components/question/question-body";
 import { buttonClass } from "@/components/ui/button";
@@ -18,7 +19,7 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
   const user = await requireStudentArea();
   const { id } = await params;
   const f = parseFilters(await searchParams);
-  const q = await db.question.findFirst({ where: { id, ...visibleTo(user.centerId) } });
+  const q = await db.question.findFirst({ where: { id, ...visibleTo(user.centerId) }, include: { subject: true, topic: true } });
   if (!q) notFound();
 
   const [{ rows, results, saved }, history] = await Promise.all([
@@ -39,8 +40,8 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
             Question Bank
           </Link>
           <ChevronRight className="size-3.5" />
-          <Link href={`/questions${filtersToQuery({ skill: q.skill, section: q.section as Section })}`} className="truncate hover:text-ink">
-            {q.skill}
+          <Link href={`/questions${filtersToQuery({ subject: q.subjectId, topic: q.topicId })}`} className="truncate hover:text-ink">
+            {q.subject.name} · {q.topic.name}
           </Link>
         </nav>
         <div className="flex items-center gap-2">
@@ -68,16 +69,16 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
 
       <div className="rounded-2xl border border-line bg-surface shadow-card">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-          <Badge tone="brand">{SECTION_LABEL[q.section as Section]}</Badge>
-          <span className="text-sm font-semibold text-ink-2">{q.domain}</span>
+          <SubjectBadge name={q.subject.name} color={q.subject.color} />
+          <span className="text-sm font-semibold text-ink-2">{q.topic.name}</span>
           <DifficultyBadge difficulty={q.difficulty} />
-          {q.type === "SPR" && <Badge>Student-produced response</Badge>}
+          {q.type === "SHORT" && <Badge>Typed answer</Badge>}
           {last !== undefined && (
             <Badge tone={last ? "success" : "danger"}>Last try: {last ? "correct" : "incorrect"}</Badge>
           )}
         </div>
         <div className="p-5 sm:p-8">
-          <QuestionBody section={q.section} passage={q.passage} stem={q.stem}>
+          <QuestionBody passage={q.passage} stem={q.stem}>
             <Practice
               key={q.id}
               questionId={q.id}
@@ -85,7 +86,7 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
               choices={parseChoices(q.choices)}
               saved={saved.has(q.id)}
               nextHref={next ? `/questions/${next.id}${qs}` : null}
-              askText={`Can you help me understand this SAT ${q.skill} question?\n\n${q.passage ? `${q.passage}\n\n` : ""}${q.stem}${
+              askText={`Can you help me understand this ${q.subject.name} question about ${q.topic.name.toLowerCase()}?\n\n${q.passage ? `${q.passage}\n\n` : ""}${q.stem}${
                 parseChoices(q.choices).length ? `\n\n${parseChoices(q.choices).map((c, i) => `${"ABCD"[i]}) ${c}`).join("\n")}` : ""
               }`}
             />

@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   const user = await requireStudentArea();
   const [totals, universities, branch] = await Promise.all([
     userTotals(user.id),
-    db.university.findMany({ orderBy: { rank: "asc" }, select: { id: true, name: true } }),
+    db.university.findMany({ orderBy: [{ country: "asc" }, { rank: "asc" }], select: { id: true, name: true } }),
     user.branchId ? db.branch.findUnique({ where: { id: user.branchId } }) : null,
   ]);
 
@@ -31,7 +31,8 @@ export default async function ProfilePage() {
           <div className="mt-2 flex flex-wrap gap-2">
             {user.center && <Badge tone="brand">{user.center.name}</Badge>}
             {branch && <Badge>{branch.name}</Badge>}
-            {user.group && <Badge>{user.group.name}</Badge>}
+            {user.grade && <Badge>{user.grade}</Badge>}
+            {user.memberships.map((m) => <Badge key={m.groupId}>{m.group.name}</Badge>)}
             <Badge>Joined {formatDate(user.createdAt)}</Badge>
           </div>
         </div>
@@ -42,19 +43,20 @@ export default async function ProfilePage() {
         <StatTile label="Streak" value={liveStreak(user)} hint="days" icon={<Flame className="size-4" />} />
         <StatTile label="Best streak" value={user.bestStreak} hint="days" icon={<Award className="size-4" />} />
         <StatTile label="Questions" value={totals.answered.toLocaleString()} hint={`${totals.accuracy}% accuracy`} icon={<BookOpenCheck className="size-4" />} />
-        <StatTile label="Mock tests" value={totals.tests} hint="completed" icon={<ClipboardCheck className="size-4" />} />
+        <StatTile label="Tests" value={totals.tests} hint={totals.avgTestScore !== null ? `average ${totals.avgTestScore}%` : "completed"} icon={<ClipboardCheck className="size-4" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
-          <CardHeader title="Your goal & details" subtitle="Used for your dashboard countdown and university comparisons" />
+          <CardHeader title="Your goal & details" subtitle="Shown on your dashboard and used to personalise the AI Assistant" />
           <CardBody>
             <ProfileForm
               universities={universities}
               defaults={{
                 name: user.name,
                 phone: user.phone ?? "",
-                targetScore: user.targetScore ?? 1450,
+                grade: user.grade ?? "",
+                goal: user.goal ?? "",
                 examDate: user.examDate?.toISOString().slice(0, 10) ?? "",
                 targetUniId: user.targetUniId ?? "",
               }}

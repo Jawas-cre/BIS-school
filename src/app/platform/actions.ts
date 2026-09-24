@@ -13,10 +13,9 @@ const UniInput = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
   rank: z.coerce.number().int().min(1).max(1000),
-  acceptanceRate: z.coerce.number().min(0).max(100),
-  satLow: z.coerce.number().int().min(400).max(1600),
-  satHigh: z.coerce.number().int().min(400).max(1600),
-  tuition: z.coerce.number().int().min(0),
+  acceptanceRate: z.union([z.literal("").transform(() => null), z.coerce.number().min(0).max(100)]),
+  tuition: z.union([z.literal("").transform(() => null), z.coerce.number().int().min(0)]),
+  requirements: z.string().trim().min(3).max(600),
   aid: z.string().trim().max(200),
   website: z.string().trim().url().refine((u) => /^https?:\/\//i.test(u), "Use an http(s) link"),
   about: z.string().trim().max(600),
@@ -26,7 +25,6 @@ export async function saveUniversity(id: string | null, _: ActionState, fd: Form
   await requireSuperAdmin();
   const parsed = UniInput.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: `${parsed.error.issues[0].path.join(".")}: ${parsed.error.issues[0].message}` };
-  if (parsed.data.satLow > parsed.data.satHigh) return { error: "The SAT low value must be below the high value" };
   if (id) await db.university.update({ where: { id }, data: parsed.data });
   else await db.university.create({ data: parsed.data });
   revalidatePath("/platform/universities");

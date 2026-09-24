@@ -19,15 +19,14 @@ function UniFields({ u }: { u?: Uni }) {
       <Field label="Country"><Input name="country" defaultValue={u?.country} required /></Field>
       <Field label="City"><Input name="city" defaultValue={u?.city} required /></Field>
       <Field label="Rank"><Input name="rank" type="number" defaultValue={u?.rank} required /></Field>
-      <Field label="Acceptance %"><Input name="acceptanceRate" type="number" step="0.1" defaultValue={u?.acceptanceRate} required /></Field>
-      <Field label="SAT low"><Input name="satLow" type="number" defaultValue={u?.satLow} required /></Field>
-      <Field label="SAT high"><Input name="satHigh" type="number" defaultValue={u?.satHigh} required /></Field>
-      <Field label="Tuition (USD)"><Input name="tuition" type="number" defaultValue={u?.tuition} required /></Field>
+      <Field label="Acceptance %" hint="Leave empty if unknown"><Input name="acceptanceRate" type="number" step="0.1" defaultValue={u?.acceptanceRate ?? ""} /></Field>
+      <Field label="Tuition (USD / year)" hint="Leave empty if unknown"><Input name="tuition" type="number" defaultValue={u?.tuition ?? ""} /></Field>
       <Field label="Latitude"><Input name="lat" type="number" step="any" defaultValue={u?.lat} required /></Field>
       <Field label="Longitude"><Input name="lng" type="number" step="any" defaultValue={u?.lng} required /></Field>
       <Field label="Website"><Input name="website" type="url" defaultValue={u?.website} required /></Field>
       <Field label="Financial aid" className="sm:col-span-2"><Input name="aid" defaultValue={u?.aid} /></Field>
       <Field label="About" className="sm:col-span-2"><Textarea name="about" rows={2} defaultValue={u?.about} /></Field>
+      <Field label="Admission requirements" className="sm:col-span-4"><Textarea name="requirements" rows={2} defaultValue={u?.requirements} required /></Field>
     </div>
   );
 }
@@ -52,7 +51,7 @@ export default async function PlatformUniversities() {
             <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-3">
               <span className="w-8 text-sm font-bold text-muted">#{u.rank}</span>
               <span className="flex-1 font-semibold">{u.name}</span>
-              <span className="text-sm text-muted">{u.city}, {u.country} · SAT {u.satLow}–{u.satHigh}</span>
+              <span className="text-sm text-muted">{u.city}, {u.country}</span>
             </summary>
             <div className="border-t border-line p-5">
               <ActionForm action={saveUniversity.bind(null, u.id)} submitLabel="Save">

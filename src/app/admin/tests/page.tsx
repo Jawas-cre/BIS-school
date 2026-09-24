@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { ALL_SKILLS } from "@/lib/sat";
+import { visibleSubjects } from "@/lib/subjects";
+import { SubjectBadge } from "@/components/subject-icon";
+import { SubjectTopicFields } from "../subject-topic-fields";
 import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,20 +17,24 @@ export const metadata: Metadata = { title: "Mock tests" };
 export default async function AdminTests() {
   const staff = await requireStaff();
   const [own, platform, attempts] = await Promise.all([
-    db.test.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" }, include: { modules: { include: { _count: { select: { questions: true } } } } } }),
-    db.test.findMany({ where: { centerId: null }, orderBy: [{ kind: "asc" }, { title: "asc" }], include: { modules: { include: { _count: { select: { questions: true } } } } } }),
-    db.testAttempt.groupBy({ by: ["testId"], where: { status: "COMPLETED", user: { centerId: staff.centerId } }, _count: true, _avg: { correct: true, total: true } }),
+    db.test.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" }, include: { subject: true, modules: { include: { _count: { select: { questions: true } } } } } }),
+    db.test.findMany({ where: { centerId: null }, orderBy: [{ subjectId: "asc" }, { kind: "asc" }, { title: "asc" }], include: { subject: true, modules: { include: { _count: { select: { questions: true } } } } } }),
+    db.testAttempt.groupBy({ by: ["testId"], where: { status: "COMPLETED", user: { centerId: staff.centerId } }, _count: true, _avg: { score: true } }),
   ]);
+  const subjects = await visibleSubjects(staff.centerId);
   const stats = new Map(attempts.map((a) => [a.testId, a]));
   const row = (t: (typeof own)[number], mine: boolean) => {
     const s = stats.get(t.id);
     const questions = t.modules.reduce((n, m) => n + m._count.questions, 0);
     const minutes = t.modules.reduce((n, m) => n + m.minutes, 0);
-    const avg = s?._avg.correct != null && s._avg.total ? Math.round((s._avg.correct / s._avg.total) * 100) : null;
+    const avg = s?._avg.score != null ? Math.round(s._avg.score) : null;
     return (
       <li key={t.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
         <div className="min-w-0 flex-1">
-          <div className="font-semibold">{t.title}</div>
+          <div className="flex flex-wrap items-center gap-2 font-semibold">
+            {t.title}
+            {t.subject ? <SubjectBadge name={t.subject.name} color={t.subject.color} /> : <Badge>Mixed</Badge>}
+          </div>
           <div className="text-xs text-muted">{questions} questions · {minutes} min · {t.kind.toLowerCase()}</div>
         </div>
         <span className="text-sm text-ink-2 tabular-nums">{s?._count ?? 0} taken{avg !== null ? ` · avg ${avg}%` : ""}</span>
@@ -53,7 +59,7 @@ export default async function AdminTests() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mock tests" subtitle="Platform tests are available to every student. Build your own timed tests from the question bank for homework or class quizzes." />
+      <PageHeader title="Mock tests" subtitle="Platform tests are available to every student. Build your own timed tests for any subject from the question bank — for homework, class quizzes or monthly exams." />
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div className="space-y-6">
           <Card>
@@ -74,15 +80,10 @@ export default async function AdminTests() {
           <CardHeader title="Build a test" subtitle="Questions are picked at random from the bank, easiest first" />
           <CardBody>
             <ActionForm action={createTestFromBank} submitLabel="Create & publish" resetOnSuccess>
-              <Field label="Title"><Input name="title" placeholder="Week 3 · Algebra quiz" required /></Field>
+              <Field label="Title"><Input name="title" placeholder="Week 3 quiz" required /></Field>
               <Field label="Description"><Textarea name="description" rows={2} /></Field>
+              <SubjectTopicFields subjects={subjects} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Section">
-                  <Select name="section" defaultValue="MATH">
-                    <option value="RW">Reading & Writing</option>
-                    <option value="MATH">Math</option>
-                  </Select>
-                </Field>
                 <Field label="Difficulty">
                   <Select name="difficulty" defaultValue="ANY">
                     <option value="ANY">Mixed</option>
@@ -91,16 +92,8 @@ export default async function AdminTests() {
                     <option value="HARD">Hard</option>
                   </Select>
                 </Field>
-              </div>
-              <Field label="Skill" hint="Leave empty for a mixed section test">
-                <Select name="skill" defaultValue="">
-                  <option value="">All skills in the section</option>
-                  {ALL_SKILLS.map((s) => <option key={s.skill} value={s.skill}>{s.section === "RW" ? "R&W" : "Math"} · {s.skill}</option>)}
-                </Select>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Questions"><Input name="count" type="number" min={3} max={54} defaultValue={10} /></Field>
-                <Field label="Minutes"><Input name="minutes" type="number" min={3} max={120} defaultValue={15} /></Field>
+                <Field label="Questions"><Input name="count" type="number" min={3} max={60} defaultValue={10} /></Field>
+                <Field label="Minutes"><Input name="minutes" type="number" min={3} max={180} defaultValue={15} /></Field>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="onlyCenter" className="size-4 accent-[var(--brand)]" /> Only use my center&apos;s questions

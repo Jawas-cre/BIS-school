@@ -14,22 +14,25 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { addToGroup, deleteGroup, removeFromGroup, toggleUnlock, updateGroup } from "../../_actions/people";
 import { GroupFields } from "../group-fields";
 import { cn } from "@/lib/utils";
+import { visibleSubjects } from "@/lib/subjects";
+import { SubjectBadge } from "@/components/subject-icon";
 
 export const metadata: Metadata = { title: "Group" };
 
 export default async function GroupPage({ params }: PageProps<"/admin/groups/[id]">) {
   const staff = await requireStaff();
   const { id } = await params;
-  const group = await db.group.findFirst({ where: { id, centerId: staff.centerId }, include: { unlocks: true } });
+  const group = await db.group.findFirst({ where: { id, centerId: staff.centerId }, include: { unlocks: true, subject: true } });
   if (!group) notFound();
-  const own = await db.roadmapUnit.count({ where: { centerId: staff.centerId } });
-  const [members, others, units, branches, teachers, progress] = await Promise.all([
+  const own = group.subjectId ? await db.roadmapUnit.count({ where: { centerId: staff.centerId, subjectId: group.subjectId } }) : 0;
+  const [members, others, units, branches, teachers, progress, subjects] = await Promise.all([
     centerStudents(staff.centerId, { groupId: group.id }),
-    db.user.findMany({ where: { centerId: staff.centerId, role: "STUDENT", NOT: { groupId: group.id } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.roadmapUnit.findMany({ where: { centerId: own ? staff.centerId : null }, orderBy: { order: "asc" } }),
+    db.user.findMany({ where: { centerId: staff.centerId, role: "STUDENT", memberships: { none: { groupId: group.id } } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    group.subjectId ? db.roadmapUnit.findMany({ where: { subjectId: group.subjectId, centerId: own ? staff.centerId : null }, orderBy: { order: "asc" } }) : [],
     db.branch.findMany({ where: { centerId: staff.centerId }, orderBy: { name: "asc" } }),
     db.user.findMany({ where: { centerId: staff.centerId, role: { in: ["TEACHER", "CENTER_ADMIN"] } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.unitProgress.groupBy({ by: ["unitId"], where: { user: { groupId: group.id }, completedAt: { not: null } }, _count: true }),
+    db.unitProgress.groupBy({ by: ["unitId"], where: { user: { memberships: { some: { groupId: group.id } } }, completedAt: { not: null } }, _count: true }),
+    visibleSubjects(staff.centerId),
   ]);
   const unlocked = new Set(group.unlocks.map((u) => u.unitId));
   const doneBy = new Map(progress.map((p) => [p.unitId, p._count]));
@@ -44,7 +47,10 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">{group.name}</h1>
-          <p className="text-muted">{group.schedule}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-muted">
+            {group.subject && <SubjectBadge name={group.subject.name} color={group.subject.color} />}
+            {group.schedule}
+          </div>
         </div>
         {staff.role === "CENTER_ADMIN" && (
           <ConfirmAction action={deleteGroup.bind(null, group.id)} label="Delete group" confirm="Delete this group? Students stay in your center but lose their group.">
@@ -55,7 +61,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile label="Students" value={members.length} />
-        <StatTile label="Average latest score" value={average(members.map((m) => m.latestScore)) ?? "—"} />
+        <StatTile label="Average test score" value={average(members.map((m) => m.avgTest)) !== null ? `${average(members.map((m) => m.avgTest))}%` : "—"} />
         <StatTile label="Average accuracy" value={`${average(members.map((m) => m.accuracy)) ?? 0}%`} />
         <StatTile label="Active this week" value={`${members.filter((m) => m.weekQuestions > 0).length}/${members.length}`} />
       </div>
@@ -68,7 +74,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
               <thead>
                 <tr className="border-b border-line text-left text-xs text-muted">
                   <th className="py-2 pr-3 font-semibold">Student</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Latest</th>
+                  <th className="py-2 pr-3 text-right font-semibold">Avg test</th>
                   <th className="py-2 pr-3 text-right font-semibold">Accuracy</th>
                   <th className="py-2 pr-3 text-right font-semibold">This week</th>
                   <th className="py-2" />
@@ -82,7 +88,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
                         <Avatar name={m.name} size={28} /> {m.name}
                       </Link>
                     </td>
-                    <td className="py-2 pr-3 text-right font-bold tabular-nums">{m.latestScore ?? "—"}</td>
+                    <td className="py-2 pr-3 text-right font-bold tabular-nums">{m.avgTest !== null ? `${m.avgTest}%` : "—"}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.accuracy === null ? "—" : `${m.accuracy}%`}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.weekQuestions}</td>
                     <td className="py-2 text-right">
@@ -111,14 +117,14 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
           <CardHeader title="Group details" />
           <CardBody>
             <ActionForm action={updateGroup.bind(null, group.id)}>
-              <GroupFields branches={branches} teachers={teachers} defaults={group} />
+              <GroupFields branches={branches} teachers={teachers} subjects={subjects} defaults={group} />
             </ActionForm>
           </CardBody>
         </Card>
       </div>
 
       <Card>
-        <CardHeader title="Roadmap access" subtitle="Units unlock one by one as students pass quizzes. Unlock a unit here to open it for the whole group now." />
+        <CardHeader title="Roadmap access" subtitle={group.subject ? `${group.subject.name} units unlock one by one as students pass quizzes. Unlock a unit here to open it for the whole group now.` : "Choose a subject for this group to manage its roadmap."} />
         <CardBody>
           <ol className="grid gap-2 md:grid-cols-2">
             {units.map((u, i) => {

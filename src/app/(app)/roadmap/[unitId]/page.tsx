@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, Lock, PlayCircle } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { roadmapFor } from "@/lib/roadmap";
-import { parseChoices } from "@/lib/sat";
+import { parseChoices } from "@/lib/quiz";
+import { SubjectBadge } from "@/components/subject-icon";
 import { shuffleSeeded } from "@/lib/shuffle";
 import { dayKey, toEmbedUrl } from "@/lib/utils";
 import { Markdown } from "@/components/markdown";
@@ -19,7 +20,9 @@ export const metadata: Metadata = { title: "Roadmap unit" };
 export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]">) {
   const user = await requireStudentArea();
   const { unitId } = await params;
-  const units = await roadmapFor(user);
+  const target = await db.roadmapUnit.findFirst({ where: { id: unitId, ...visibleTo(user.centerId) }, include: { subject: true } });
+  if (!target) notFound();
+  const units = await roadmapFor(user, target.subjectId);
   const index = units.findIndex((u) => u.id === unitId);
   if (index < 0) notFound();
   const unit = units[index];
@@ -32,7 +35,7 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
         <EmptyState
           icon={<Lock className="size-5" />}
           title="This unit is locked"
-          action={<ButtonLink href="/roadmap">Back to roadmap</ButtonLink>}
+          action={<ButtonLink href={`/roadmap?subject=${target.subjectId}`}>Back to roadmap</ButtonLink>}
         >
           Complete “{prev?.title}” first, or ask your teacher to unlock it for your group.
         </EmptyState>
@@ -40,11 +43,11 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
     );
   }
 
-  // Five quiz questions from the unit's skill; the pick changes daily so retakes differ.
-  const pool = unit.skill
+  // Five quiz questions from the unit's topic; the pick changes daily so retakes differ.
+  const pool = unit.topicId
     ? await db.question.findMany({
-        where: { skill: unit.skill, ...visibleTo(user.centerId) },
-        select: { id: true, section: true, type: true, passage: true, stem: true, choices: true },
+        where: { topicId: unit.topicId, ...visibleTo(user.centerId) },
+        select: { id: true, type: true, passage: true, stem: true, choices: true },
       })
     : [];
   const quiz = shuffleSeeded(pool, `${user.id}:${unit.id}:${dayKey()}`)
@@ -55,15 +58,16 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
   return (
     <div className="mx-auto max-w-4xl">
       <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/roadmap" className="hover:text-ink">
-          Roadmap
+        <Link href={`/roadmap?subject=${target.subjectId}`} className="hover:text-ink">
+          Roadmap · {target.subject.name}
         </Link>
         <ChevronRight className="size-3.5" />
         <span>Unit {index + 1}</span>
       </nav>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={unit.section === "MATH" ? "warning" : "brand"}>{unit.section === "MATH" ? "Math" : "Reading & Writing"}</Badge>
+        <SubjectBadge name={target.subject.name} color={target.subject.color} />
+        {unit.topic && <Badge>{unit.topic.name}</Badge>}
         {unit.completed && <Badge tone="success">Completed{unit.quizScore !== null ? ` · ${unit.quizScore}%` : ""}</Badge>}
       </div>
       <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">{unit.title}</h1>

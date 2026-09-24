@@ -3,23 +3,23 @@
 import { ChartCard, DataTable } from "./chart-card";
 
 const BANDS = [
-  { label: "< 1000", min: 0, max: 999 },
-  { label: "1000–1090", min: 1000, max: 1099 },
-  { label: "1100–1190", min: 1100, max: 1199 },
-  { label: "1200–1290", min: 1200, max: 1299 },
-  { label: "1300–1390", min: 1300, max: 1399 },
-  { label: "1400–1490", min: 1400, max: 1499 },
-  { label: "1500+", min: 1500, max: 1600 },
+  { label: "< 40%", min: 0, max: 39 },
+  { label: "40–49%", min: 40, max: 49 },
+  { label: "50–59%", min: 50, max: 59 },
+  { label: "60–69%", min: 60, max: 69 },
+  { label: "70–79%", min: 70, max: 79 },
+  { label: "80–89%", min: 80, max: 89 },
+  { label: "90%+", min: 90, max: 100 },
 ];
 
-/** Histogram of students' latest full-test scores (single series). */
+/** Histogram of students' average test scores (single series). */
 export function ScoreBands({ scores }: { scores: number[] }) {
   const counts = BANDS.map((b) => ({ ...b, n: scores.filter((s) => s >= b.min && s <= b.max).length }));
   const max = Math.max(1, ...counts.map((c) => c.n));
   return (
     <ChartCard
       title="Score distribution"
-      subtitle={`Latest full-length mock score · ${scores.length} students`}
+      subtitle={`Average test score per student · ${scores.length} students`}
       table={<DataTable head={["Score band", "Students"]} rows={counts.map((c) => [c.label, c.n])} />}
     >
       <div className="flex h-56 items-end gap-2 border-b border-[var(--chart-axis)] sm:gap-4">

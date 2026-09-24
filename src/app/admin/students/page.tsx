@@ -7,7 +7,8 @@ import { centerStudents } from "@/lib/admin";
 import { PageHeader, Avatar } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Field, Input, Select } from "@/components/ui/form";
+import { Field, Input } from "@/components/ui/form";
+import { SubjectBadge } from "@/components/subject-icon";
 import { ActionForm } from "@/components/action-form";
 import { createStudent } from "../_actions/people";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
     db.group.findMany({ where: { centerId: staff.centerId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   const students = all.filter(
-    (s) => (!q || s.name.toLowerCase().includes(q) || s.email.includes(q)) && (!groupId || (groupId === "none" ? !s.group : s.group?.id === groupId)),
+    (s) => (!q || s.name.toLowerCase().includes(q) || s.email.includes(q)) && (!groupId || (groupId === "none" ? s.groups.length === 0 : s.groups.some((g) => g.id === groupId))),
   );
 
   return (
@@ -52,9 +53,9 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
               <thead>
                 <tr className="border-b border-line text-left text-xs text-muted">
                   <th className="px-4 py-3 font-semibold">Student</th>
-                  <th className="px-3 py-3 font-semibold">Group</th>
-                  <th className="px-3 py-3 text-right font-semibold">Latest</th>
-                  <th className="px-3 py-3 text-right font-semibold">Goal</th>
+                  <th className="px-3 py-3 font-semibold">Groups</th>
+                  <th className="px-3 py-3 text-right font-semibold">Avg test</th>
+                  <th className="px-3 py-3 text-right font-semibold">Tests</th>
                   <th className="px-3 py-3 text-right font-semibold">Accuracy</th>
                   <th className="px-3 py-3 text-right font-semibold">This week</th>
                   <th className="px-4 py-3 text-right font-semibold">Streak</th>
@@ -72,9 +73,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
                         </span>
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5">{s.group ? <Badge>{s.group.name}</Badge> : <span className="text-muted">—</span>}</td>
-                    <td className="px-3 py-2.5 text-right font-bold tabular-nums">{s.latestScore ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-right text-muted tabular-nums">{s.targetScore ?? "—"}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex max-w-64 flex-wrap gap-1">
+                        {s.groups.length ? s.groups.map((g) => (g.subject ? <SubjectBadge key={g.id} name={g.subject.name} color={g.subject.color} /> : <Badge key={g.id}>{g.name}</Badge>)) : <span className="text-muted">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold tabular-nums">{s.avgTest !== null ? `${s.avgTest}%` : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-muted tabular-nums">{s.testsTaken}</td>
                     <td className={cn("px-3 py-2.5 text-right tabular-nums", s.accuracy !== null && s.accuracy < 55 && "font-semibold text-danger")}>{s.accuracy === null ? "—" : `${s.accuracy}%`}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{s.weekQuestions ? `${s.weekQuestions} q` : <span className="text-warning">inactive</span>}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{s.streak ? `🔥 ${s.streak}` : "—"}</td>
@@ -95,14 +100,18 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
               <Field label="Full name"><Input name="name" required /></Field>
               <Field label="Email"><Input name="email" type="email" required /></Field>
               <Field label="Phone"><Input name="phone" type="tel" /></Field>
-              <Field label="Group">
-                <Select name="groupId" defaultValue="">
-                  <option value="">No group</option>
+              <Field label="Grade or level"><Input name="grade" placeholder="e.g. Grade 9" /></Field>
+              <fieldset>
+                <legend className="mb-1.5 text-sm font-semibold">Groups</legend>
+                <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-line p-2">
                   {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
+                    <label key={g.id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-surface-2">
+                      <input type="checkbox" name="groupIds" value={g.id} className="size-4 accent-[var(--brand)]" /> {g.name}
+                    </label>
                   ))}
-                </Select>
-              </Field>
+                  {groups.length === 0 && <p className="px-2 py-1 text-xs text-muted">No groups yet.</p>}
+                </div>
+              </fieldset>
               <Field label="Password" hint="Leave empty to generate one">
                 <Input name="password" type="text" minLength={8} autoComplete="off" />
               </Field>

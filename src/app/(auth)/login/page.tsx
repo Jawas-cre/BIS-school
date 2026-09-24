@@ -9,7 +9,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <div className="animate-fade-up">
       <h1 className="font-display text-3xl font-extrabold tracking-tight">Welcome back</h1>
-      <p className="mt-2 text-muted">Log in to continue your SAT preparation.</p>
+      <p className="mt-2 text-muted">Log in to continue learning.</p>
       <LoginForm next={typeof next === "string" ? next : ""} />
       <p className="mt-8 text-center text-sm text-muted">
         New student?{" "}

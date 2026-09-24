@@ -6,12 +6,13 @@ import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { EmptyState, PageHeader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SubjectBadge } from "@/components/subject-icon";
 
 export const metadata: Metadata = { title: "Library" };
 
 const CATEGORIES = [
   { key: "", label: "All" },
-  { key: "PRACTICE", label: "Official practice", icon: Target },
+  { key: "PRACTICE", label: "Practice & tools", icon: Target },
   { key: "BOOK", label: "Books", icon: BookOpen },
   { key: "GUIDE", label: "Guides & tools", icon: FileText },
   { key: "VIDEO", label: "Video courses", icon: PlayCircle },
@@ -31,11 +32,12 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
       ],
     },
     orderBy: [{ centerId: "desc" }, { createdAt: "desc" }],
+    include: { subject: { select: { name: true, color: true } } },
   });
 
   return (
     <div>
-      <PageHeader title="Library" subtitle="Books, official practice, guides and video courses — hand-picked by your center and the platform." />
+      <PageHeader title="Library" subtitle="Books, practice tools, guides and video courses for every subject — hand-picked by your center and the platform." />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 shadow-card">
           {CATEGORIES.map((c) => (
@@ -81,6 +83,7 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
                 {item.author && <div className="text-xs text-muted">{item.author}</div>}
                 {item.description && <p className="mt-2 flex-1 text-sm text-ink-2">{item.description}</p>}
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {item.subject && <SubjectBadge name={item.subject.name} color={item.subject.color} />}
                   <Badge>{cat?.label ?? item.category}</Badge>
                   {item.centerId && <Badge tone="brand">From your center</Badge>}
                   {item.pages && <Badge>{item.pages} pages</Badge>}

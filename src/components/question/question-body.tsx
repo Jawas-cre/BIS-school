@@ -1,15 +1,13 @@
 import { Markdown } from "@/components/markdown";
 import { cn } from "@/lib/utils";
 
-/** Passage + stem layout. Reading & Writing uses the split view from the real exam. */
+/** Passage + question layout: a split view when the question comes with a passage. */
 export function QuestionBody({
-  section,
   passage,
   stem,
   children,
   split = true,
 }: {
-  section: string;
   passage: string | null;
   stem: string;
   children: React.ReactNode;
@@ -25,7 +23,7 @@ export function QuestionBody({
         </div>
       )}
       <div className={cn(twoCol && "lg:pl-8")}>
-        <Markdown className={cn("text-[15px] text-ink", section === "RW" && "font-semibold")}>{stem}</Markdown>
+        <Markdown className={cn("text-[15px] text-ink", hasPassage && "font-semibold")}>{stem}</Markdown>
         <div className="mt-5">{children}</div>
       </div>
     </div>

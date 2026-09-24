@@ -4,10 +4,10 @@ import { CheckCircle2 } from "lucide-react";
 import { PLATFORM_NAME } from "@/lib/brand";
 
 const POINTS = [
-  "A full SAT question bank with step-by-step explanations",
-  "Bluebook-style timed mock tests with instant score reports",
-  "A roadmap with video lessons that unlocks topic by topic",
-  "Vocabulary trainer, library, top universities and an AI tutor",
+  "Every subject your center teaches, in one place",
+  "Question bank with step-by-step explanations",
+  "Timed mock tests with instant results",
+  "A roadmap of lessons for each subject, plus vocabulary, a library, top universities and an AI tutor",
 ];
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
@@ -28,7 +28,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         </div>
         <div className="relative mt-auto max-w-lg">
           <h2 className="font-display text-4xl leading-tight font-extrabold tracking-tight">
-            Every student in your center, on the road to 1600.
+            Every student, every subject, one learning platform.
           </h2>
           <ul className="mt-8 space-y-3 text-[15px] text-white/90">
             {POINTS.map((p) => (

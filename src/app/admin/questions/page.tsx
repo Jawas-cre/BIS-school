@@ -9,17 +9,16 @@ import { Badge, DifficultyBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/action-form";
 import { deleteQuestion } from "../_actions/content";
-import { SECTION_LABEL, type Section } from "@/lib/sat";
+import { SubjectBadge } from "@/components/subject-icon";
 
 export const metadata: Metadata = { title: "Questions" };
 
 export default async function AdminQuestions({ searchParams }: PageProps<"/admin/questions">) {
   const staff = await requireStaff();
   const { saved } = await searchParams;
-  const [own, platformCount, bySkill] = await Promise.all([
-    db.question.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" } }),
+  const [own, platformCount] = await Promise.all([
+    db.question.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" }, include: { subject: true, topic: true } }),
     db.question.count({ where: { centerId: null } }),
-    db.question.groupBy({ by: ["section"], where: { centerId: null }, _count: true }),
   ]);
 
   return (
@@ -30,25 +29,22 @@ export default async function AdminQuestions({ searchParams }: PageProps<"/admin
         action={<ButtonLink href="/admin/questions/new"><Plus className="size-4" /> New question</ButtonLink>}
       />
       {saved && <p className="rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-success">Question saved.</p>}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:max-w-md sm:grid-cols-2">
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
           <div className="text-xs font-semibold text-muted">Your questions</div>
           <div className="font-display text-2xl font-extrabold">{own.length}</div>
         </div>
-        {bySkill.map((s) => (
-          <div key={s.section} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-            <div className="text-xs font-semibold text-muted">Platform · {SECTION_LABEL[s.section as Section]}</div>
-            <div className="font-display text-2xl font-extrabold">{s._count}</div>
-          </div>
-        ))}
+        <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+          <div className="text-xs font-semibold text-muted">Platform questions</div>
+          <div className="font-display text-2xl font-extrabold">{platformCount}</div>
+        </div>
       </div>
-      <p className="text-sm text-muted">{platformCount} platform questions are available to your students automatically.</p>
 
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {own.length === 0 ? (
           <div className="p-10 text-center">
             <p className="font-semibold">You haven&apos;t added any questions yet.</p>
-            <p className="mt-1 text-sm text-muted">Great for homework sets, past exam material you own, or your teachers&apos; favourite problems.</p>
+            <p className="mt-1 text-sm text-muted">Add questions for any subject — homework sets, past exam material you own, or your teachers&apos; favourite problems.</p>
           </div>
         ) : (
           <ul className="divide-y divide-line">
@@ -57,10 +53,10 @@ export default async function AdminQuestions({ searchParams }: PageProps<"/admin
                 <div className="min-w-0 flex-1">
                   <div className="text-sm text-ink">{preview(q.stem, q.passage)}</div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                    <Badge tone="brand">{SECTION_LABEL[q.section as Section]}</Badge>
-                    <span className="font-semibold text-ink-2">{q.skill}</span>
+                    <SubjectBadge name={q.subject.name} color={q.subject.color} />
+                    <span className="font-semibold text-ink-2">{q.topic.name}</span>
                     <DifficultyBadge difficulty={q.difficulty} />
-                    {q.type === "SPR" && <Badge>Grid-in</Badge>}
+                    {q.type === "SHORT" && <Badge>Typed answer</Badge>}
                   </div>
                 </div>
                 <Link href={`/admin/questions/${q.id}`} className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-ink" aria-label="Edit"><Pencil className="size-4" /></Link>

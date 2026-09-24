@@ -10,7 +10,7 @@ const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin
 export const metadata: Metadata = {
   title: { default: `${PLATFORM_NAME} — ${PLATFORM_TAGLINE}`, template: `%s · ${PLATFORM_NAME}` },
   description:
-    "Question bank, timed mock tests, a structured roadmap with video lessons, vocabulary, a library, top universities and an AI tutor — one SAT platform for every learning center.",
+    "One learning platform for every learning center and every subject: question bank, timed mock tests, a roadmap of lessons, vocabulary, a library, top universities and an AI tutor.",
 };
 
 // Applies the saved (or system) theme before first paint to avoid a flash.

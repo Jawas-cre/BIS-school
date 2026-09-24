@@ -10,7 +10,11 @@ export const getCurrentUser = cache(async () => {
   if (!session) return null;
   return db.user.findUnique({
     where: { id: session.userId },
-    include: { center: true, group: true, targetUni: true },
+    include: {
+      center: true,
+      targetUni: true,
+      memberships: { include: { group: { include: { subject: true, teacher: { select: { name: true } } } } } },
+    },
   });
 });
 

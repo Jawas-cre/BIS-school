@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Bookmark, ChevronDown, ChevronUp, Coffee, Eye, EyeOff, FunctionSquare, LogOut, MapPin, X } from "lucide-react";
-import { resumeFromBreak, saveProgress, submitModule } from "@/app/(app)/tests/actions";
+import { Bookmark, ChevronDown, ChevronUp, Eye, EyeOff, LogOut, MapPin, X } from "lucide-react";
+import { saveProgress, submitModule } from "@/app/(app)/tests/actions";
 import { Choices, GridIn } from "@/components/question/choices";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ReferenceSheet } from "./reference-sheet";
 
 type Q = { id: string; type: string; passage: string | null; stem: string; choices: string[] };
 
@@ -17,9 +16,7 @@ type Props = {
   attemptId: string;
   studentName: string;
   testTitle: string;
-  status: "IN_PROGRESS" | "BREAK";
-  breakSeconds: number;
-  module: { index: number; count: number; title: string; section: "RW" | "MATH"; seconds: number; isLast: boolean };
+  module: { index: number; count: number; title: string; seconds: number; isLast: boolean };
   questions: Q[];
   initialAnswers: Record<string, string>;
   initialFlagged: string[];
@@ -52,36 +49,7 @@ function useCountdown(seconds: number, onExpire: () => void, active = true) {
 }
 
 export function Runner(props: Props) {
-  if (props.status === "BREAK") return <BreakScreen {...props} />;
   return <ModuleRunner {...props} />;
-}
-
-function BreakScreen({ attemptId, breakSeconds, module }: Props) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const resume = useCallback(() => start(async () => {
-    await resumeFromBreak(attemptId);
-    router.refresh();
-  }), [attemptId, router]);
-  const left = useCountdown(breakSeconds, resume);
-
-  return (
-    <div className="grid min-h-dvh place-items-center bg-bg px-5">
-      <div className="w-full max-w-lg rounded-3xl border border-line bg-surface p-8 text-center shadow-card">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand">
-          <Coffee className="size-7" />
-        </div>
-        <h1 className="mt-4 font-display text-2xl font-extrabold">Take a break</h1>
-        <p className="mt-2 text-muted">
-          You&apos;ve finished Reading and Writing. Stretch, drink some water — Math ({module.title}) starts when the break ends or when you&apos;re ready.
-        </p>
-        <div className="mt-6 font-display text-5xl font-extrabold tabular-nums">{clock(left)}</div>
-        <Button size="lg" className="mt-8 w-full" disabled={pending} onClick={resume}>
-          {pending ? "Starting…" : "Resume testing"}
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 function ModuleRunner({ attemptId, studentName, testTitle, module, questions, initialAnswers, initialFlagged }: Props) {
@@ -92,7 +60,7 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
   const [struck, setStruck] = useState<Record<string, string[]>>({});
   const [eliminator, setEliminator] = useState(false);
   const [hideTimer, setHideTimer] = useState(false);
-  const [panel, setPanel] = useState<null | "nav" | "directions" | "reference">(null);
+  const [panel, setPanel] = useState<null | "nav" | "directions">(null);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [confirming, setConfirming] = useState(false);
   const [submitting, startSubmit] = useTransition();
@@ -150,7 +118,8 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
       <header className="relative z-20 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-line px-4 sm:px-6">
         <div className="min-w-0">
           <div className="truncate text-sm font-bold text-ink sm:text-base">
-            Module {module.index + 1} of {module.count}: {module.title.replace(/ — Module \d/, "")}
+            {module.count > 1 ? `Section ${module.index + 1} of ${module.count}: ` : ""}
+            {module.title}
           </div>
           <button onClick={() => setPanel(panel === "directions" ? null : "directions")} className="flex items-center gap-1 text-xs font-semibold text-ink-2 hover:text-ink">
             Directions {panel === "directions" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -170,11 +139,6 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
           </button>
         </div>
         <div className="flex items-center justify-end gap-1">
-          {module.section === "MATH" && (
-            <button onClick={() => setPanel(panel === "reference" ? null : "reference")} className="flex flex-col items-center rounded-lg px-2 py-1 text-[11px] font-semibold text-ink-2 hover:bg-surface-2">
-              <FunctionSquare className="size-5" /> Reference
-            </button>
-          )}
           <Link href="/tests" className="flex flex-col items-center rounded-lg px-2 py-1 text-[11px] font-semibold text-ink-2 hover:bg-surface-2" title="Your answers are saved. The module timer keeps running.">
             <LogOut className="size-5" /> Save & exit
           </Link>
@@ -185,22 +149,10 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
       {panel === "directions" && (
         <Popover onClose={() => setPanel(null)} className="left-4 top-20 max-w-xl">
           <h2 className="font-display text-lg font-bold">Directions</h2>
-          {module.section === "RW" ? (
-            <p className="mt-2 text-sm text-ink-2">
-              The questions in this section address a number of important reading and writing skills. Each question includes one or more passages, which may include a table or graph. Read each passage and question carefully, and then choose the best answer based on the passage(s). All questions in this section are multiple-choice with four answer choices. Each question has a single best answer.
-            </p>
-          ) : (
-            <div className="mt-2 space-y-2 text-sm text-ink-2">
-              <p>The questions in this section address a number of important math skills. Use of a calculator is permitted for all questions. Unless otherwise indicated, all variables and expressions represent real numbers, figures are drawn to scale, and all figures lie in a plane.</p>
-              <p><strong>Student-produced responses:</strong> if you find more than one correct answer, enter only one. You can enter up to 5 characters for a positive answer and up to 6 for a negative answer. Enter fractions or decimals — not mixed numbers. Don&apos;t enter symbols such as %, comma or $.</p>
-            </div>
-          )}
-        </Popover>
-      )}
-      {panel === "reference" && (
-        <Popover onClose={() => setPanel(null)} className="right-4 top-20 max-w-lg">
-          <h2 className="mb-2 font-display text-lg font-bold">Reference sheet</h2>
-          <ReferenceSheet />
+          <div className="mt-2 space-y-2 text-sm text-ink-2">
+            <p>Answer every question in this section before the timer ends — when time runs out, the section is submitted automatically. You can move between questions freely and use <strong>Mark for review</strong> to come back later.</p>
+            <p>For multiple-choice questions, choose the single best answer. For typed answers, enter a number, word or short phrase. Numbers can be written as decimals (0.75) or fractions (3/4).</p>
+          </div>
         </Popover>
       )}
 
@@ -210,9 +162,7 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
           <div className="h-full overflow-y-auto px-5 py-10">
             <div className="mx-auto max-w-3xl text-center">
               <h1 className="font-display text-3xl font-extrabold">Check your work</h1>
-              <p className="mt-2 text-muted">
-                On test day, you won&apos;t be able to move on to the next module until time expires. For these practice questions, you can submit when you&apos;re ready.
-              </p>
+              <p className="mt-2 text-muted">Check the questions you skipped or marked for review, then submit when you&apos;re ready.</p>
               <div className="mt-8 rounded-2xl border border-line p-6 text-left shadow-card">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <span className="font-bold">{testTitle}</span>
@@ -248,7 +198,7 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
                     </button>
                   )}
                 </div>
-                <Markdown className={cn("text-[15px] text-ink", module.section === "RW" && "font-semibold")}>{q.stem}</Markdown>
+                <Markdown className={cn("text-[15px] text-ink", q.passage && "font-semibold")}>{q.stem}</Markdown>
                 <div className="mt-5">
                   {q.type === "MCQ" ? (
                     <Choices
@@ -298,7 +248,7 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
           )}
           {onReview ? (
             <Button className="rounded-full" disabled={submitting} onClick={() => (unanswered ? setConfirming(true) : submit())}>
-              {submitting ? "Submitting…" : module.isLast ? "Finish test" : "Submit module"}
+              {submitting ? "Submitting…" : module.isLast ? "Finish test" : "Submit section"}
             </Button>
           ) : (
             <Button className="rounded-full" onClick={() => go(index + 1)}>
@@ -327,7 +277,7 @@ function ModuleRunner({ attemptId, studentName, testTitle, module, questions, in
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-5" role="dialog" aria-modal="true">
           <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-pop">
             <h2 className="font-display text-lg font-bold">Submit with {unanswered} unanswered?</h2>
-            <p className="mt-2 text-sm text-muted">There&apos;s no penalty for guessing. After submitting, you can&apos;t return to this module.</p>
+            <p className="mt-2 text-sm text-muted">Wrong answers don&apos;t lose points. After submitting, you can&apos;t return to this section.</p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setConfirming(false)}>
                 Keep working

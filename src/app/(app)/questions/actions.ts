@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser, visibleTo } from "@/lib/auth";
 import { recordPractice } from "@/lib/activity";
-import { isCorrect } from "@/lib/sat";
+import { isCorrect } from "@/lib/quiz";
 
 export type CheckResult = { correct: boolean; answer: string; explanation: string };
 
@@ -14,7 +14,7 @@ export async function checkAnswer(questionId: string, response: string, seconds:
   if (!q) throw new Error("Question not found");
   const correct = isCorrect(q.type, q.answer, response);
   await db.questionAttempt.create({
-    data: { userId: user.id, questionId, response: response.slice(0, 40), correct, seconds: Math.max(0, Math.min(3600, Math.round(seconds))), source: "BANK" },
+    data: { userId: user.id, questionId, response: response.slice(0, 60), correct, seconds: Math.max(0, Math.min(3600, Math.round(seconds))), source: "BANK" },
   });
   await recordPractice(user.id, { questions: 1, correct: correct ? 1 : 0, minutes: Math.round(seconds / 60) });
   revalidatePath("/questions");

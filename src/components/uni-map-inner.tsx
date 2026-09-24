@@ -40,9 +40,6 @@ export default function UniMapInner({
                 <div className="text-xs opacity-70">
                   {u.city}, {u.country}
                 </div>
-                <div className="mt-1 text-xs">
-                  SAT {u.satLow}–{u.satHigh}
-                </div>
                 <Link href={`/universities/${u.id}`} className="mt-1 inline-block text-xs font-semibold">
                   View details →
                 </Link>

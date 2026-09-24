@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 type Message = { id: string; role: "user" | "assistant"; content: string };
 
 const SUGGESTIONS = [
-  "When do I use a semicolon vs. a colon on the SAT?",
-  "Give me 3 hard quadratic questions, one at a time",
-  "Make a 6-week study plan to go from 1300 to 1450",
-  "Explain how to find the vertex of a parabola quickly",
+  "Explain Newton's second law with an everyday example",
+  "Give me 3 quadratic equation problems, one at a time",
+  "When do I use a semicolon instead of a comma?",
+  "Make a 4-week revision plan for my exams",
 ];
 
 export function Chat({ conversationId: initialId, initialMessages, initialDraft }: { conversationId: string | null; initialMessages: Message[]; initialDraft: string }) {
@@ -82,9 +82,9 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
             <div className="grid size-14 place-items-center rounded-2xl bg-brand text-white shadow-card">
               <Sparkles className="size-7" />
             </div>
-            <h1 className="mt-4 font-display text-2xl font-extrabold">Your SAT tutor, any time</h1>
+            <h1 className="mt-4 font-display text-2xl font-extrabold">Your tutor, any time</h1>
             <p className="mt-2 max-w-md text-muted">
-              Ask about any question, concept or strategy. The assistant knows your goal and weak spots, and explains step by step.
+              Ask about any subject, problem or topic. The assistant knows your subjects, goal and weak spots, and explains step by step.
             </p>
             <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (
@@ -144,7 +144,7 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
               }
             }}
             rows={Math.min(8, Math.max(1, draft.split("\n").length))}
-            placeholder="Ask about a question, a concept, or your study plan…"
+            placeholder="Ask about any subject, a problem, or your study plan…"
             className="max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-ink outline-none placeholder:text-muted"
             maxLength={4000}
           />

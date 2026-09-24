@@ -24,6 +24,7 @@ import {
   Users,
   X,
   ArrowLeftRight,
+  Shapes,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -47,6 +48,7 @@ const ICONS = {
   ShieldCheck,
   Settings,
   Building2,
+  Shapes,
 };
 
 export type ShellUser = {

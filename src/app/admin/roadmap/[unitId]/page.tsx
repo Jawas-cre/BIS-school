@@ -11,12 +11,12 @@ export const metadata: Metadata = { title: "Edit unit" };
 export default async function EditUnit({ params }: PageProps<"/admin/roadmap/[unitId]">) {
   const staff = await requireStaff();
   const { unitId } = await params;
-  const unit = await db.roadmapUnit.findFirst({ where: { id: unitId, centerId: staff.centerId } });
+  const unit = await db.roadmapUnit.findFirst({ where: { id: unitId, centerId: staff.centerId }, include: { subject: { include: { topics: { orderBy: { order: "asc" } } } } } });
   if (!unit) notFound();
   return (
     <div>
-      <PageHeader title={`Edit: ${unit.title}`} />
-      <UnitForm action={saveUnit.bind(null, unit.id)} unit={unit} />
+      <PageHeader eyebrow={unit.subject.name} title={`Edit: ${unit.title}`} />
+      <UnitForm action={saveUnit.bind(null, unit.id, unit.subjectId)} topics={unit.subject.topics} unit={unit} />
     </div>
   );
 }

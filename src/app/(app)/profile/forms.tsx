@@ -10,7 +10,7 @@ export function ProfileForm({
   defaults,
 }: {
   universities: { id: string; name: string }[];
-  defaults: { name: string; phone: string; targetScore: number; examDate: string; targetUniId: string };
+  defaults: { name: string; phone: string; grade: string; goal: string; examDate: string; targetUniId: string };
 }) {
   const [state, action] = useActionState(updateProfile, null);
   return (
@@ -22,13 +22,16 @@ export function ProfileForm({
         <Field label="Phone">
           <Input name="phone" defaultValue={defaults.phone} type="tel" />
         </Field>
-        <Field label="Target score" hint="400–1600">
-          <Input name="targetScore" type="number" min={400} max={1600} step={10} defaultValue={defaults.targetScore} />
+        <Field label="Grade or level">
+          <Input name="grade" defaultValue={defaults.grade} />
         </Field>
-        <Field label="Exam date">
+        <Field label="Next important exam">
           <Input name="examDate" type="date" defaultValue={defaults.examDate} />
         </Field>
       </div>
+      <Field label="Your goal">
+        <Input name="goal" defaultValue={defaults.goal} maxLength={160} />
+      </Field>
       <Field label="Dream university">
         <Select name="targetUniId" defaultValue={defaults.targetUniId}>
           <option value="">Not decided yet</option>

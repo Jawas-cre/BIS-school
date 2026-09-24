@@ -12,9 +12,13 @@ export default async function OnboardingPage() {
   if (user.role !== "STUDENT") redirect(homeFor(user.role));
 
   const [universities, branches, groups] = await Promise.all([
-    db.university.findMany({ orderBy: { rank: "asc" }, select: { id: true, name: true, country: true, satLow: true, satHigh: true } }),
+    db.university.findMany({ orderBy: [{ country: "asc" }, { rank: "asc" }], select: { id: true, name: true, country: true } }),
     db.branch.findMany({ where: { centerId: user.centerId ?? "" }, orderBy: { name: "asc" } }),
-    db.group.findMany({ where: { centerId: user.centerId ?? "" }, orderBy: { name: "asc" }, select: { id: true, name: true, branchId: true, schedule: true } }),
+    db.group.findMany({
+      where: { centerId: user.centerId ?? "" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, branchId: true, schedule: true, subject: { select: { name: true, color: true } } },
+    }),
   ]);
 
   return (
@@ -23,21 +27,12 @@ export default async function OnboardingPage() {
         <Logo subtitle={user.center?.name} />
         <div className="mt-10 animate-fade-up">
           <p className="text-sm font-bold tracking-wider text-brand uppercase">Step 2 of 2</p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
-            Hi {user.name.split(" ")[0]}, let&apos;s set your goal
-          </h1>
-          <p className="mt-2 text-muted">
-            This personalises your dashboard: countdown, score trajectory and the universities you&apos;re aiming for.
-          </p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">Hi {user.name.split(" ")[0]}, tell us about your studies</h1>
+          <p className="mt-2 text-muted">This personalises your dashboard: your subjects, groups, goal and exam countdown. You can change everything later.</p>
           <OnboardingForm
             universities={universities}
             branches={branches.map((b) => ({ id: b.id, name: b.name }))}
             groups={groups}
-            defaults={{
-              targetScore: user.targetScore ?? 1450,
-              examDate: user.examDate?.toISOString().slice(0, 10) ?? "",
-              targetUniId: user.targetUniId ?? "",
-            }}
           />
         </div>
       </div>

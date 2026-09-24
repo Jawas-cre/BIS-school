@@ -6,13 +6,14 @@ import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { EmptyState, PageHeader, Progress } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { pct } from "@/lib/utils";
+import { SubjectBadge } from "@/components/subject-icon";
 
 export const metadata: Metadata = { title: "Vocabulary" };
 
 export default async function VocabularyPage() {
   const user = await requireStudentArea();
   const [decks, progress] = await Promise.all([
-    db.vocabDeck.findMany({ where: visibleTo(user.centerId), include: { words: { select: { id: true } } }, orderBy: { title: "asc" } }),
+    db.vocabDeck.findMany({ where: visibleTo(user.centerId), include: { words: { select: { id: true } }, subject: { select: { name: true, color: true } } }, orderBy: { title: "asc" } }),
     db.userWord.findMany({ where: { userId: user.id }, select: { wordId: true, box: true, nextReview: true } }),
   ]);
   const byWord = new Map(progress.map((p) => [p.wordId, p]));
@@ -26,7 +27,7 @@ export default async function VocabularyPage() {
     <div>
       <PageHeader
         title="Vocabulary"
-        subtitle="Grow your word power with spaced-repetition flashcards. Words you know come back less often; words you miss come back tomorrow."
+        subtitle="Learn words and key terms with spaced-repetition flashcards. Cards you know come back less often; cards you miss come back tomorrow."
       />
       <div className="mb-6 grid grid-cols-3 gap-3 sm:max-w-xl">
         {[
@@ -55,7 +56,10 @@ export default async function VocabularyPage() {
             return (
               <Link key={d.id} href={`/vocabulary/${d.id}`} className="group flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-card hover:border-line-strong">
                 <div className="flex items-center justify-between">
-                  <Badge tone={d.level === "Core" ? "brand" : d.level === "Advanced" ? "warning" : "danger"}>{d.level}</Badge>
+                  <span className="flex items-center gap-2">
+                    <Badge tone={d.level === "Beginner" ? "success" : d.level === "Intermediate" ? "brand" : "warning"}>{d.level}</Badge>
+                    {d.subject && <SubjectBadge name={d.subject.name} color={d.subject.color} />}
+                  </span>
                   {dueHere > 0 && <Badge tone="danger">{dueHere} due</Badge>}
                 </div>
                 <h3 className="mt-3 font-display text-lg font-bold group-hover:text-brand">{d.title}</h3>

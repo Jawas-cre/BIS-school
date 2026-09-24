@@ -14,7 +14,8 @@ export async function updateProfile(_: ProfileState, formData: FormData): Promis
     .object({
       name: z.string().trim().min(2, "Enter your full name").max(80),
       phone: z.string().trim().max(30).optional(),
-      targetScore: z.coerce.number().int().min(400).max(1600).optional(),
+      grade: z.string().trim().max(40).optional(),
+      goal: z.string().trim().max(160).optional(),
       examDate: z.string().optional(),
       targetUniId: z.string().optional(),
     })
@@ -27,7 +28,8 @@ export async function updateProfile(_: ProfileState, formData: FormData): Promis
     data: {
       name: d.name,
       phone: d.phone || null,
-      targetScore: d.targetScore ?? user.targetScore,
+      grade: d.grade || null,
+      goal: d.goal || null,
       examDate: d.examDate ? new Date(`${d.examDate}T09:00:00`) : null,
       targetUniId: uni?.id ?? null,
     },

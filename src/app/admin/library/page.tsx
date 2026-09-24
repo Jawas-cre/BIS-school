@@ -8,15 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { ActionForm, ConfirmAction } from "@/components/action-form";
 import { createLibraryItem, deleteLibraryItem } from "../_actions/content";
+import { visibleSubjects } from "@/lib/subjects";
 
 export const metadata: Metadata = { title: "Library" };
 
 export default async function AdminLibrary() {
   const staff = await requireStaff();
   const [own, platformCount] = await Promise.all([
-    db.libraryItem.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" } }),
+    db.libraryItem.findMany({ where: { centerId: staff.centerId }, orderBy: { createdAt: "desc" }, include: { subject: { select: { name: true } } } }),
     db.libraryItem.count({ where: { centerId: null } }),
   ]);
+  const subjects = await visibleSubjects(staff.centerId);
   return (
     <div className="space-y-6">
       <PageHeader title="Library" subtitle={`Share books, PDFs, videos and links with your students. ${platformCount} platform resources are included automatically.`} />
@@ -30,7 +32,7 @@ export default async function AdminLibrary() {
                     <a href={i.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold hover:text-brand">
                       {i.title} <ExternalLink className="size-3.5" />
                     </a>
-                    <div className="text-xs text-muted">{[i.author, i.description].filter(Boolean).join(" · ")}</div>
+                    <div className="text-xs text-muted">{[i.subject?.name, i.author, i.description].filter(Boolean).join(" · ")}</div>
                   </div>
                   <Badge>{i.category.toLowerCase()}</Badge>
                   <ConfirmAction action={deleteLibraryItem.bind(null, i.id)} label="Delete" confirm={`Remove “${i.title}”?`}><Trash2 className="size-4" /></ConfirmAction>
@@ -57,6 +59,12 @@ export default async function AdminLibrary() {
                 </Field>
                 <Field label="Pages"><Input name="pages" type="number" min={1} /></Field>
               </div>
+              <Field label="Subject">
+                <Select name="subjectId" defaultValue="">
+                  <option value="">General</option>
+                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </Select>
+              </Field>
               <Field label="Author"><Input name="author" /></Field>
               <Field label="Description"><Textarea name="description" rows={2} /></Field>
             </ActionForm>

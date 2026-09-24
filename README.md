@@ -1,48 +1,50 @@
-# BIS Prep — SAT platform for learning centers
+# BIS Learn — the learning platform for learning centers
 
-A multi-center Digital SAT preparation platform. Each learning center gets its own private space
-(students, groups, branches, teachers, content and brand color) on one shared platform, and every
-student gets a complete prep toolkit.
+A multi-center learning platform for any subject a learning center teaches — mathematics, languages,
+sciences, history, computer science and more. Each center gets its own private space (students,
+groups, branches, teachers, subjects, content and brand color) on one shared platform, and every
+student gets the same toolkit for every subject they study.
 
 ## Features
 
 ### For students
-- **Dashboard** — greeting with goal, latest score and exam countdown; score trajectory vs. goal;
-  accuracy by SAT domain compared with the group; group standing; dream-university fit; practice
-  heatmap with streaks; latest announcements.
-- **Roadmap** — structured course (lesson notes + optional YouTube/Vimeo video) that unlocks one unit
-  at a time; each unit ends with a 5-question quiz (60% to pass). Teachers can unlock units for a group.
-- **Question Bank** — filter by section, domain, skill, difficulty and your status (new / correct /
-  incorrect / saved); answer with instant feedback, step-by-step explanations, answer eliminator and
-  bookmarks. Supports multiple-choice and student-produced (grid-in) answers with math rendering.
-- **Mock Tests** — full-length (4 modules + 10-minute break), section and topic tests in a
-  Bluebook-style runner: per-module timer, mark for review, question navigator, review page,
-  reference sheet, autosave and server-side time limits. Score report with section scores, domain
-  breakdown and a full question review.
-- **Vocabulary** — spaced-repetition (Leitner) flashcards across platform and center decks.
-- **Library** — official practice, books, guides and video courses, filterable and searchable.
-- **Top Universities** — interactive map, SAT ranges, acceptance rates, tuition and aid, compared with
-  your latest score; set your dream university.
+- **Dashboard** — greeting with goal, latest test result and exam countdown; "My subjects" with
+  roadmap progress and accuracy per subject; test score trend; accuracy by subject compared with
+  classmates; groups and schedules; dream university; practice heatmap with streaks; latest news.
+- **Roadmap** — a course per subject (lesson notes + optional YouTube/Vimeo video) that unlocks one
+  unit at a time; each unit ends with a short quiz (60% to pass). Teachers can unlock units for a group.
+- **Question Bank** — filter by subject, topic, difficulty and your status (new / correct / incorrect /
+  saved); instant feedback, step-by-step explanations, answer eliminator and bookmarks. Supports
+  multiple-choice and typed answers (numbers, fractions or words) with math rendering.
+- **Mock Tests** — exams, practice tests and topic quizzes in a distraction-free runner: timed
+  sections, mark for review, question navigator, review page, autosave and server-side time limits.
+  Results page with percentage score, per-section and per-topic breakdown and a full question review.
+- **Vocabulary** — spaced-repetition (Leitner) flashcards: language words, science terms and more.
+- **Library** — books, guides, courses and videos tagged by subject; filter by type and search.
+- **Top Universities** — interactive map with requirements, acceptance rates, tuition and aid; set
+  your dream university.
 - **What's New** — center and platform announcements.
-- **AI Assistant** — streaming SAT tutor powered by Claude that knows the student's goal and weakest
-  domains; saved conversations; “Ask AI” from any explanation; daily message limit.
-- **Profile** — goal, exam date, dream university, password; streaks and XP.
+- **AI Assistant** — streaming tutor powered by Claude that knows the student's subjects, goal and
+  weakest topics; saved conversations; "Ask AI" from any explanation; daily message limit.
+- **Profile** — grade, goal, exam date, dream university, password; streaks and XP.
 
 ### For learning centers (admins and teachers) — `/admin`
-- Overview: invite code, active students, average scores, score distribution, students who need
-  attention, group table, latest results.
-- Students: search/filter, per-student analytics (score trend, domain accuracy, roadmap, activity,
-  test history), create accounts, move between groups, reset passwords.
-- Groups: teacher, branch, schedule, members, and roadmap unlocks per group.
-- Content: your own questions, test builder (random picks from the bank by section/skill/difficulty),
-  customizable roadmap with video lessons, vocabulary decks, library resources, announcements.
+- **Overview**: invite code, active students, average test scores, score distribution, students who
+  need attention, group table, latest results.
+- **Students**: searchable list filtered by group, with groups, average test score, accuracy, weekly
+  activity and streak; per-student analytics (score trend, accuracy by subject, roadmap, activity,
+  test history); create accounts, assign to several groups, reset passwords.
+- **Groups**: subject, teacher, branch, schedule, members and roadmap unlocks per group.
+- **Subjects**: add your own subjects (name, icon, color) and topics on top of the platform subjects.
+- **Content**: questions, test builder (random picks from the bank by subject / topic / difficulty),
+  per-subject roadmap with video lessons, vocabulary decks, library resources, announcements.
 - Staff (teachers / admins), branches, center profile and accent color (applied across the app).
 
 ### For the platform owner — `/platform`
 Centers overview, universities, and platform-wide announcements.
 
-Features not included by request: support sessions, mentors, duels, question rush, placements,
-last dances and competitions.
+Platform content (subjects, questions, tests, roadmaps, decks, library) is shared with every center;
+anything a center creates is visible only to that center.
 
 ## Tech stack
 
@@ -67,10 +69,10 @@ npm run dev                 # http://localhost:3000
 
 | Role | Email |
 |---|---|
-| Student | `student@demo.uz` |
-| Teacher | `teacher@demo.uz` |
+| Student (Mathematics, English, Physics) | `student@demo.uz` |
+| Teachers | `teacher@demo.uz`, `teacher2@demo.uz`, `teacher3@demo.uz` |
 | Center admin | `admin@demo.uz` (center invite code `DEMO24`) |
-| Platform owner | `owner@bisprep.uz` |
+| Platform owner | `owner@bislearn.uz` |
 
 New students can register at `/register` with the code `DEMO24`; new centers at `/register/center`.
 
@@ -107,25 +109,24 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 
 ```
 prisma/
-  schema.prisma          data model (centers, users, groups, questions, tests, roadmap, …)
-  seed/                  platform content: questions (original R&W + generated math), lessons,
+  schema.prisma          data model (centers, users, groups, subjects, questions, tests, roadmap, …)
+  seed/                  platform content: subjects and topics, generated questions, lessons,
                          vocabulary, library, universities, demo center with history
 src/
   app/(auth)/            login, student and center registration
-  app/onboarding/        goal setup after sign-up
+  app/onboarding/        grade, goal and group setup after sign-up
   app/(app)/             student area (dashboard, roadmap, questions, tests, vocabulary, …)
   app/(exam)/            distraction-free test runner
   app/admin/             center admin and teacher panel
   app/platform/          platform owner panel
   app/api/assistant/     streaming AI tutor endpoint
   components/            UI kit, charts, app shell
-  lib/                   auth/session, SAT taxonomy and scoring, stats, tests, AI config
+  lib/                   auth/session, subjects, quiz grading, stats, tests, AI config
   proxy.ts               optimistic auth redirect
 ```
 
 ## Content notes
 
-All seeded questions, passages and lessons are original. Math questions are generated from templates
-whose answer keys are computed from the same numbers they print. University figures are approximate
-and should be refreshed each admissions cycle from official sources. SAT® is a trademark registered by
-the College Board, which is not affiliated with and does not endorse this product.
+All seeded questions, passages and lessons are original. Math and science questions are generated
+from templates whose answer keys are computed from the same numbers they print. University figures
+are approximate and should be refreshed each admissions cycle from official sources.

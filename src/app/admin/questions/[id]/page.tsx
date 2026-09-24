@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { parseChoices } from "@/lib/sat";
+import { parseChoices } from "@/lib/quiz";
 import { PageHeader } from "@/components/ui/misc";
+import { visibleSubjects } from "@/lib/subjects";
 import { QuestionForm } from "../question-form";
 import { saveQuestion } from "../../_actions/content";
 
@@ -14,10 +15,11 @@ export default async function EditQuestion({ params }: PageProps<"/admin/questio
   const { id } = await params;
   const q = await db.question.findFirst({ where: { id, centerId: staff.centerId } });
   if (!q) notFound();
+  const subjects = await visibleSubjects(staff.centerId);
   return (
     <div>
       <PageHeader title="Edit question" />
-      <QuestionForm action={saveQuestion.bind(null, q.id)} initial={{ ...q, choices: parseChoices(q.choices) }} />
+      <QuestionForm action={saveQuestion.bind(null, q.id)} subjects={subjects} initial={{ ...q, choices: parseChoices(q.choices) }} />
     </div>
   );
 }

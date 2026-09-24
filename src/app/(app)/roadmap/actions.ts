@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireUser, visibleTo } from "@/lib/auth";
 import { recordPractice } from "@/lib/activity";
 import { roadmapFor } from "@/lib/roadmap";
-import { isCorrect } from "@/lib/sat";
+import { isCorrect } from "@/lib/quiz";
 
 const PASS_PERCENT = 60;
 
@@ -17,7 +17,9 @@ export type QuizResult = {
 
 async function unlockedUnit(unitId: string) {
   const user = await requireUser();
-  const unit = (await roadmapFor(user)).find((u) => u.id === unitId);
+  const target = await db.roadmapUnit.findFirst({ where: { id: unitId, ...visibleTo(user.centerId) } });
+  if (!target) throw new Error("Unit not found");
+  const unit = (await roadmapFor(user, target.subjectId)).find((u) => u.id === unitId);
   if (!unit || !unit.unlocked) throw new Error("This unit is locked");
   return { user, unit };
 }
@@ -25,7 +27,7 @@ async function unlockedUnit(unitId: string) {
 export async function submitUnitQuiz(unitId: string, responses: Record<string, string>): Promise<QuizResult> {
   const { user, unit } = await unlockedUnit(unitId);
   const ids = Object.keys(responses).slice(0, 10);
-  const questions = await db.question.findMany({ where: { id: { in: ids }, skill: unit.skill ?? "", ...visibleTo(user.centerId) } });
+  const questions = await db.question.findMany({ where: { id: { in: ids }, topicId: unit.topicId ?? "", ...visibleTo(user.centerId) } });
 
   const items = questions.map((q) => {
     const response = (responses[q.id] ?? "").slice(0, 40);

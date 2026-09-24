@@ -18,27 +18,32 @@ import { PLATFORM_NAME } from "@/lib/brand";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ButtonLink } from "@/components/ui/button";
+import { SubjectIcon } from "@/components/subject-icon";
 
 const FEATURES = [
-  { icon: ListChecks, title: "Question Bank", text: "Every Reading & Writing and Math skill, filterable by topic, difficulty and your own results, with step-by-step explanations." },
-  { icon: ClipboardCheck, title: "Mock Tests", text: "Full-length, section and topic tests in the Digital SAT format — module timers, mark for review, reference sheet and instant score reports." },
-  { icon: Map, title: "Roadmap", text: "A structured course with video lessons and notes that unlocks one topic at a time, with a quiz to prove each skill." },
-  { icon: Languages, title: "Vocabulary", text: "Spaced-repetition flashcards for high-frequency SAT words, plus your center's own word lists." },
-  { icon: Library, title: "Library", text: "Official practice, books, guides and video courses curated by the platform and your teachers." },
-  { icon: GraduationCap, title: "Top Universities", text: "Explore universities on a map, compare your score with admitted students and set your dream school." },
-  { icon: Sparkles, title: "AI Assistant", text: "A tutor that knows your goal and weak spots, explains any question and builds study plans — any time." },
-  { icon: BarChart3, title: "Progress analytics", text: "Score trajectory, accuracy by domain, streaks and how you compare with your group." },
+  { icon: ListChecks, title: "Question Bank", text: "Questions for every subject and topic, filterable by difficulty and your own results, with step-by-step explanations." },
+  { icon: ClipboardCheck, title: "Mock Tests", text: "Timed exams and topic quizzes with sections, mark for review, a question navigator and instant results." },
+  { icon: Map, title: "Roadmap", text: "A course for each subject with video lessons and notes that unlocks one unit at a time, with a quiz to prove each topic." },
+  { icon: Languages, title: "Vocabulary", text: "Spaced-repetition flashcards for languages and key terms in any subject." },
+  { icon: Library, title: "Library", text: "Books, practice tools, guides and video courses curated by the platform and your teachers." },
+  { icon: GraduationCap, title: "Top Universities", text: "Explore universities in Uzbekistan and abroad on a map and set your dream school." },
+  { icon: Sparkles, title: "AI Assistant", text: "A tutor for every subject that knows your goal and weak spots, explains any problem and builds study plans." },
+  { icon: BarChart3, title: "Progress analytics", text: "Test results over time, accuracy by subject, streaks and how you compare with your group." },
 ];
 
 const CENTER_STEPS = [
   { icon: Building2, title: "Create your center", text: "Register in a minute. Add branches, set your brand color and invite your teachers." },
   { icon: KeyRound, title: "Invite students", text: "Share your invite code or add accounts yourself. Organise students into groups with a teacher and schedule." },
-  { icon: Users, title: "Teach with data", text: "Unlock roadmap units for a group, build your own tests and questions, post announcements and see who needs help." },
+  { icon: Users, title: "Teach with data", text: "Add your own subjects and questions, build tests, unlock lessons for a group, post announcements and see who needs help." },
 ];
 
 export default async function Home() {
   const user = await getCurrentUser();
-  const [questions, tests, universities] = await Promise.all([db.question.count({ where: { centerId: null } }), db.test.count({ where: { centerId: null } }), db.university.count()]);
+  const [subjects, questions, tests] = await Promise.all([
+    db.subject.findMany({ where: { centerId: null }, orderBy: { order: "asc" } }),
+    db.question.count({ where: { centerId: null } }),
+    db.test.count({ where: { centerId: null } }),
+  ]);
 
   return (
     <div className="min-h-dvh">
@@ -69,10 +74,10 @@ export default async function Home() {
               <span className="size-1.5 rounded-full bg-success" /> Built for learning centers
             </span>
             <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl leading-[1.08] font-extrabold tracking-tight sm:text-6xl">
-              Everything your students need to reach <span className="text-brand">1600</span>
+              One platform for <span className="text-brand">every subject</span> your center teaches
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted">
-              {PLATFORM_NAME} gives every learning center its own SAT platform: a question bank, timed mock tests, a video roadmap, vocabulary, a library, top universities and an AI tutor — with analytics for teachers.
+              {PLATFORM_NAME} gives every learning center its own learning platform — mathematics, languages, sciences, history and anything else you teach — with a question bank, timed tests, lesson roadmaps, vocabulary, a library, top universities and an AI tutor.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               {user ? (
@@ -84,11 +89,19 @@ export default async function Home() {
                 </>
               )}
             </div>
-            <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-3 gap-3">
+            <div className="mx-auto mt-12 flex max-w-3xl flex-wrap justify-center gap-2">
+              {subjects.map((s) => (
+                <span key={s.id} className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pr-3.5 pl-1 text-sm font-semibold shadow-card">
+                  <SubjectIcon icon={s.icon} color={s.color} size={26} /> {s.name}
+                </span>
+              ))}
+              <span className="flex items-center rounded-full border border-dashed border-line-strong px-3.5 text-sm font-semibold text-muted">+ your own subjects</span>
+            </div>
+            <dl className="mx-auto mt-8 grid max-w-3xl grid-cols-3 gap-3">
               {[
+                [subjects.length.toLocaleString(), "ready-made subjects"],
                 [questions.toLocaleString(), "practice questions"],
-                [tests.toLocaleString(), "timed mock tests"],
-                [universities.toLocaleString(), "top universities"],
+                [tests.toLocaleString(), "timed tests"],
               ].map(([v, l]) => (
                 <div key={l} className="rounded-2xl border border-line bg-surface px-3 py-4 shadow-card">
                   <dt className="font-display text-2xl font-extrabold sm:text-3xl">{v}</dt>
@@ -100,7 +113,7 @@ export default async function Home() {
         </section>
 
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <h2 className="text-center font-display text-3xl font-extrabold tracking-tight">One platform, every part of SAT prep</h2>
+          <h2 className="text-center font-display text-3xl font-extrabold tracking-tight">Everything a learning center needs</h2>
           <p className="mx-auto mt-2 max-w-xl text-center text-muted">Students practise, test and review in one place. Teachers see exactly where to help.</p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
@@ -121,7 +134,7 @@ export default async function Home() {
               <p className="text-sm font-bold tracking-wider text-brand uppercase">For learning centers</p>
               <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight">Your center, your platform</h2>
               <p className="mt-3 text-muted">
-                Each center gets a private space with its own students, groups, branches, content and brand color. Platform content is included; anything you add is visible only to your students.
+                Each center gets a private space with its own subjects, students, groups, branches, content and brand color. Ready-made subjects are included; anything you add is visible only to your students.
               </p>
               <ButtonLink href="/register/center" className="mt-6">
                 Create your center <ArrowRight className="size-4" />
@@ -156,7 +169,7 @@ export default async function Home() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:flex-row sm:px-6">
           <span>© {new Date().getFullYear()} {PLATFORM_NAME}</span>
-          <span>SAT® is a trademark registered by the College Board, which is not affiliated with and does not endorse this platform.</span>
+          <span>Built for learning centers in Uzbekistan and beyond.</span>
         </div>
       </footer>
     </div>

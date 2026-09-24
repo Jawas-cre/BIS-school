@@ -1,12 +1,11 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { visibleTo } from "@/lib/auth";
-import { DIFFICULTIES, TAXONOMY, type Section } from "@/lib/sat";
+import { DIFFICULTIES } from "@/lib/quiz";
 
 export type BankFilters = {
-  section?: Section;
-  domain?: string;
-  skill?: string;
+  subject?: string;
+  topic?: string;
   difficulty?: string;
   status?: "new" | "correct" | "incorrect" | "saved";
   q?: string;
@@ -14,13 +13,11 @@ export type BankFilters = {
 
 export function parseFilters(sp: Record<string, string | string[] | undefined>): BankFilters {
   const get = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
-  const section = get("section");
   const status = get("status");
   const difficulty = get("difficulty");
   return {
-    section: section === "MATH" || section === "RW" ? section : undefined,
-    domain: get("domain"),
-    skill: get("skill"),
+    subject: get("subject"),
+    topic: get("topic"),
     difficulty: difficulty && (DIFFICULTIES as string[]).includes(difficulty) ? difficulty : undefined,
     status: status === "new" || status === "correct" || status === "incorrect" || status === "saved" ? status : undefined,
     q: get("q")?.slice(0, 80),
@@ -53,15 +50,25 @@ export async function bankQuery(user: { id: string; centerId: string | null }, f
       where: {
         AND: [
           visibleTo(user.centerId),
-          f.section ? { section: f.section } : {},
-          f.domain ? { domain: f.domain } : {},
-          f.skill ? { skill: f.skill } : {},
+          f.subject ? { subjectId: f.subject } : {},
+          f.topic ? { topicId: f.topic } : {},
           f.difficulty ? { difficulty: f.difficulty } : {},
           f.q ? { OR: [{ stem: { contains: f.q } }, { passage: { contains: f.q } }] } : {},
         ],
       },
-      orderBy: [{ section: "desc" }, { domain: "asc" }, { skill: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-      select: { id: true, section: true, domain: true, skill: true, difficulty: true, type: true, stem: true, passage: true, centerId: true },
+      orderBy: [{ subject: { order: "asc" } }, { topic: { order: "asc" } }, { createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        subjectId: true,
+        topicId: true,
+        difficulty: true,
+        type: true,
+        stem: true,
+        passage: true,
+        centerId: true,
+        subject: { select: { name: true, color: true } },
+        topic: { select: { name: true } },
+      },
     }),
     latestResults(user.id),
     db.bookmark.findMany({ where: { userId: user.id }, select: { questionId: true } }),
@@ -77,22 +84,13 @@ export async function bankQuery(user: { id: string; centerId: string | null }, f
   return { rows: filtered, results, saved };
 }
 
-export function skillCounts(rows: { section: string; skill: string }[]) {
-  const counts = new Map<string, number>();
-  for (const r of rows) counts.set(r.skill, (counts.get(r.skill) ?? 0) + 1);
-  return (Object.keys(TAXONOMY) as Section[]).map((section) => ({
-    section,
-    domains: TAXONOMY[section].map((d) => ({ domain: d.domain, skills: d.skills.map((s) => ({ skill: s, count: counts.get(s) ?? 0 })) })),
-  }));
-}
-
 /** Plain-text preview of a question for list views. */
 export function preview(stem: string, passage: string | null) {
   const text = (passage && passage.length > 20 ? passage : stem)
     .replace(/\$\$[\s\S]*?\$\$/g, " [equation] ")
     .replace(/\$([^$]+)\$/g, "$1")
     .replace(/\\[a-z]+\{?/gi, "")
-    .replace(/[{}*>#|\\]/g, "")
+    .replace(/[{}*>#|\\`]/g, "")
     .replace(/_{3,}/g, "______")
     .replace(/\s+/g, " ")
     .trim();

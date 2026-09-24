@@ -9,7 +9,7 @@ import { Markdown } from "@/components/markdown";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type QuizQuestion = { id: string; section: string; type: string; passage: string | null; stem: string; choices: string[] };
+type QuizQuestion = { id: string; type: string; passage: string | null; stem: string; choices: string[] };
 
 export function UnitQuiz({
   unitId,
@@ -93,7 +93,7 @@ export function UnitQuiz({
                 {r && <span className={r.correct ? "text-success" : "text-danger"}>· {r.correct ? "Correct" : "Incorrect"}</span>}
               </div>
               {q.passage && <Markdown className="passage mb-4">{q.passage}</Markdown>}
-              <Markdown className={cn("mb-4 text-[15px] text-ink", q.section === "RW" && "font-semibold")}>{q.stem}</Markdown>
+              <Markdown className={cn("mb-4 text-[15px] text-ink", q.passage && "font-semibold")}>{q.stem}</Markdown>
               {q.type === "MCQ" ? (
                 <Choices
                   choices={q.choices}

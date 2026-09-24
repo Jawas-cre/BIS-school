@@ -44,16 +44,19 @@ export async function POST(req: Request) {
   });
   await db.aiMessage.create({ data: { conversationId: conversation.id, role: "user", content: message } });
 
-  // Personalisation: goal, latest score and weakest domains.
-  const [latest, byDomain] = await Promise.all([
-    db.testAttempt.findFirst({ where: { userId: user.id, status: "COMPLETED", totalScore: { not: null } }, orderBy: { finishedAt: "desc" } }),
-    accuracyBy([user.id], "domain"),
+  // Personalisation: subjects, goal, average test score and weakest topics.
+  const [avg, byTopic] = await Promise.all([
+    db.testAttempt.aggregate({ where: { userId: user.id, status: "COMPLETED" }, _avg: { score: true } }),
+    accuracyBy([user.id], "topic"),
   ]);
-  const weakest = [...byDomain.entries()]
-    .filter(([, v]) => v.total >= 10)
+  const weakIds = [...byTopic.entries()]
+    .filter(([, v]) => v.total >= 8)
     .sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total)
-    .slice(0, 2)
+    .slice(0, 3)
     .map(([k]) => k);
+  const weakTopics = weakIds.length
+    ? await db.topic.findMany({ where: { id: { in: weakIds } }, select: { name: true, subject: { select: { name: true } } } })
+    : [];
 
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     ...history.reverse().map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
@@ -84,10 +87,12 @@ export async function POST(req: Request) {
                 type: "text",
                 text: studentContext({
                   name: user.name,
-                  targetScore: user.targetScore,
+                  grade: user.grade,
+                  goal: user.goal,
                   examDate: user.examDate,
-                  latestScore: latest?.totalScore ?? null,
-                  weakest,
+                  subjects: [...new Set(user.memberships.map((m) => m.group.subject?.name).filter((n): n is string => Boolean(n)))],
+                  avgTestScore: avg._avg.score === null ? null : Math.round(avg._avg.score),
+                  weakest: weakTopics.map((t) => `${t.name} (${t.subject.name})`),
                   centerName: user.center?.name ?? null,
                 }),
               },
@@ -103,7 +108,7 @@ export async function POST(req: Request) {
         });
         const final = await stream.finalMessage();
         if (final.stop_reason === "refusal") {
-          const note = "\n\n_I can't help with that request. Try asking about an SAT topic, a practice question or your study plan._";
+          const note = "\n\n_I can't help with that request. Try asking about a topic you're studying, a practice question or your study plan._";
           text += note;
           controller.enqueue(encoder.encode(note));
         } else if (final.stop_reason === "max_tokens") {

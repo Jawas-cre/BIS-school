@@ -8,7 +8,7 @@ const LETTERS = ["A", "B", "C", "D"];
 
 /**
  * Answer options. `result` switches to review mode: the key is green, a wrong pick red.
- * Right-click (or the ⊘ button) strikes out a choice, like the eliminator in Bluebook.
+ * Right-click (or the ⊘ button) strikes out a choice to eliminate it.
  */
 export function Choices({
   choices,
@@ -103,16 +103,16 @@ export function GridIn({
   result?: { correct: boolean; answer: string } | null;
 }) {
   return (
-    <div className="max-w-xs">
+    <div className="max-w-sm">
       <label className="mb-1.5 block text-sm font-semibold text-ink">Your answer</label>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9./-]/g, "").slice(0, 7))}
+        onChange={(e) => onChange(e.target.value.slice(0, 40))}
         disabled={disabled || Boolean(result)}
-        inputMode="decimal"
-        placeholder="e.g. 3/4 or 0.75"
+        placeholder="Type your answer"
+        autoComplete="off"
         className={cn(
-          "h-12 w-full rounded-xl border-2 bg-surface px-4 font-mono text-lg tracking-wider text-ink outline-none focus:border-brand",
+          "h-12 w-full rounded-xl border-2 bg-surface px-4 text-lg text-ink outline-none focus:border-brand",
           result ? (result.correct ? "border-success" : "border-danger") : "border-line-strong",
         )}
       />
@@ -122,7 +122,7 @@ export function GridIn({
             Correct answer: <strong className="text-ink">{result.answer}</strong>
           </>
         ) : (
-          "Enter a number, fraction (3/4) or decimal. Negative answers are allowed."
+          "Numbers can be written as whole numbers, decimals (0.75) or fractions (3/4)."
         )}
       </p>
     </div>
