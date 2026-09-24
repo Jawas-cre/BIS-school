@@ -75,6 +75,25 @@ Every page and server action checks the role on the server, so hiding a link is 
 
 ## Run it on your laptop
 
+### Easiest: double-click
+
+1. Install **Node.js** (the "LTS" version) from [nodejs.org](https://nodejs.org) with the default options.
+2. Unzip the whole project folder.
+3. Double-click the start file inside it:
+   - **Windows:** `START-HERE-Windows.bat`. If Windows shows "Windows protected your PC", click
+     **More info → Run anyway**.
+   - **macOS:** `START-HERE-Mac.command`. The first time, right-click it, choose **Open**, then **Open**
+     again (macOS asks once for files downloaded from the internet).
+4. Wait while it prepares everything. The first start installs packages, creates the database with
+   demo data and builds the site (a few minutes, needs internet). Your browser then opens
+   **http://localhost:3000** by itself. Later starts take a few seconds.
+
+Keep the black window open while you use the site; close it (or press `Ctrl + C`) to stop the site.
+Double-clicking again while the site is already running just opens the browser. Your data is kept
+between starts in `prisma/dev.db`.
+
+### With the terminal
+
 1. Install **Node.js 20 or newer** (the "LTS" version) from [nodejs.org](https://nodejs.org).
 2. Unzip the project (or `git clone` it) and open a terminal in the project folder:
    - **Windows:** open the folder in File Explorer, click the address bar, type `cmd` and press Enter.
@@ -129,6 +148,7 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 
 | Command | What it does |
 |---|---|
+| `START-HERE-Windows.bat` / `START-HERE-Mac.command` | Double-click launcher: install, set up, build, start and open the browser |
 | `npm run setup` | First-time setup: `.env`, database and demo data |
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build / server |

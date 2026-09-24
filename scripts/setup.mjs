@@ -32,4 +32,5 @@ if (hadDatabase && !reset) {
   run("npx tsx prisma/seed/index.ts");
 }
 
-console.log("\nAll set! Start the app with:  npm run dev\nThen open http://localhost:3000 in your browser.");
+// The double-click launchers start the site themselves, so the hint is only for manual setup.
+if (!process.env.BIS_LAUNCHER) console.log("\nAll set! Start the app with:  npm run dev\nThen open http://localhost:3000 in your browser.");
