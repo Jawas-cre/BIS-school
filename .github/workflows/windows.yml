@@ -70,7 +70,7 @@ jobs:
           Get-Content C:\bis\launch.log -Tail 60
           if (Test-Path C:\bis\bis-learn\build-log.txt) { Write-Host "--- build-log.txt ---"; Get-Content C:\bis\bis-learn\build-log.txt -Tail 80 }
           if (-not $up) { throw "The site did not start" }
-          Write-Host "Symbolic-link privilege of $env:USER_NAME: $(if (Select-String -Path C:\bis\privileges.txt -Pattern SeCreateSymbolicLink -Quiet) { 'yes' } else { 'no' })"
+          Write-Host "Symbolic-link privilege of ${env:USER_NAME}: $(if (Select-String -Path C:\bis\privileges.txt -Pattern SeCreateSymbolicLink -Quiet) { 'yes' } else { 'no' })"
           $links = @(Get-ChildItem C:\bis\bis-learn\.next -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue)
           Write-Host "Symbolic links or junctions in .next: $($links.Count)"
 
