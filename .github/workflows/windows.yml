@@ -15,7 +15,7 @@ jobs:
       BIS_ADMIN_EMAIL: admin@windows-check.example
       BIS_ADMIN_PASSWORD: windows-check-1
       USER_NAME: bischeck
-      USER_PASSWORD: Bis-Check-2026!x
+      USER_PASSWORD: Bis-Check-26!x # at most 14 characters, or `net user` stops to ask a question
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,9 +37,12 @@ jobs:
         shell: pwsh
         run: |
           net user $env:USER_NAME $env:USER_PASSWORD /add
+          if ($LASTEXITCODE) { throw "Could not create the user" }
           # Lets the user run scheduled tasks; gives no administrator rights or symbolic-link privilege.
           net localgroup "Performance Log Users" $env:USER_NAME /add
+          if ($LASTEXITCODE) { throw "Could not add the user to Performance Log Users" }
           icacls C:\bis /grant "$($env:USER_NAME):(OI)(CI)F" /T /Q
+          if ($LASTEXITCODE) { throw "Could not give the user the C:\bis folder" }
 
       - name: Double-click START-HERE-Windows.bat as that user
         shell: pwsh
