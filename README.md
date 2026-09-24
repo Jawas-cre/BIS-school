@@ -127,6 +127,7 @@ changes. Nothing to install: it works with the zip copy, without Git.
 - If a new version can't be built, the previous one is put back and keeps running.
 - *Center settings → Software version* shows the version the computer runs and when it was installed.
 - Changes reach the computers once they are **merged into `main`** on GitHub.
+- Only people who can merge into `main` on GitHub decide what the computers run.
 - To turn updates off, set `BIS_UPDATES="off"` in the `.env` file. A folder made with `git clone` is
   not updated automatically — use `git pull` there.
 - Maintainers: build the zip with `npm run zip`; it records the version, so computers only install

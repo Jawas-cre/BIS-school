@@ -373,7 +373,7 @@ export const settings = defineMessages({
     enterBranchName: "Filial nomini kiriting",
     branchAdded: "Filial qoʻshildi",
     versionTitle: "Dastur versiyasi",
-    updatesOn: "BIS Learn start-here oynasi ochiq turganda GitHub’dan oʻzini oʻzi yangilaydi. Yangilanishdan soʻng yangiliklarni koʻrish uchun sahifani yangilang.",
+    updatesOn: "BIS Learn START-HERE oynasi ochiq turganda GitHub orqali oʻzini oʻzi yangilaydi. Yangilanishdan soʻng yangiliklarni koʻrish uchun sahifani yangilang.",
     updatesOff: 'Avtomatik yangilanish oʻchirilgan (.env faylida BIS_UPDATES="off").',
     version: "Versiya",
     released: "Chiqarilgan sana",
