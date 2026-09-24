@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { requireStudentArea } from "@/lib/auth";
+import { breakSecondsLeft, loadAttempt, parseJson, secondsLeft } from "@/lib/tests";
+import { parseChoices } from "@/lib/sat";
+import { expireIfNeeded } from "@/app/(app)/tests/actions";
+import { Runner } from "./runner";
+
+export const metadata: Metadata = { title: "Test in progress" };
+
+export default async function AttemptPage({ params }: PageProps<"/tests/attempt/[attemptId]">) {
+  const user = await requireStudentArea();
+  const { attemptId } = await params;
+  await expireIfNeeded(attemptId).catch(() => null);
+  const attempt = await loadAttempt(attemptId, user.id);
+  if (!attempt) notFound();
+  if (attempt.status === "COMPLETED") redirect(`/tests/attempt/${attempt.id}/results`);
+
+  const mods = attempt.test.modules;
+  const mod = mods[attempt.moduleIndex];
+  const answers = parseJson<Record<string, string>>(attempt.answers, {});
+  const flagged = parseJson<string[]>(attempt.flagged, []);
+  const ids = new Set(mod.questions.map((q) => q.questionId));
+
+  return (
+    <Runner
+      key={`${attempt.id}:${attempt.moduleIndex}:${attempt.status}`}
+      attemptId={attempt.id}
+      studentName={user.name}
+      testTitle={attempt.test.title}
+      status={attempt.status as "IN_PROGRESS" | "BREAK"}
+      breakSeconds={breakSecondsLeft(attempt)}
+      module={{
+        index: attempt.moduleIndex,
+        count: mods.length,
+        title: mod.title,
+        section: mod.section as "RW" | "MATH",
+        seconds: secondsLeft(attempt),
+        isLast: attempt.moduleIndex === mods.length - 1,
+      }}
+      questions={mod.questions.map(({ question: q }) => ({
+        id: q.id,
+        type: q.type,
+        passage: q.passage,
+        stem: q.stem,
+        choices: parseChoices(q.choices),
+      }))}
+      initialAnswers={Object.fromEntries(Object.entries(answers).filter(([id]) => ids.has(id)))}
+      initialFlagged={flagged.filter((id) => ids.has(id))}
+    />
+  );
+}

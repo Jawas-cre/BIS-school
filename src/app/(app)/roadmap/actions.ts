@@ -7,7 +7,7 @@ import { recordPractice } from "@/lib/activity";
 import { roadmapFor } from "@/lib/roadmap";
 import { isCorrect } from "@/lib/sat";
 
-export const PASS_PERCENT = 60;
+const PASS_PERCENT = 60;
 
 export type QuizResult = {
   score: number;
