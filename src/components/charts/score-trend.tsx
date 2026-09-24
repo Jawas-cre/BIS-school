@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   CartesianGrid,
   LabelList,
@@ -49,6 +50,15 @@ export function ScoreTrend({ data, goal }: { data: ScorePoint[]; goal: number | 
         />
       }
     >
+      {data.length === 0 ? (
+        <div className="grid h-64 place-items-center rounded-xl border border-dashed border-line-strong text-center">
+          <div>
+            <p className="font-semibold text-ink">No full-length tests yet</p>
+            <p className="mt-1 text-sm text-muted">Your score trajectory appears after your first full-length mock test.</p>
+            <Link href="/tests" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">Browse mock tests →</Link>
+          </div>
+        </div>
+      ) : (
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 18, right: 40, bottom: 0, left: -8 }}>
@@ -102,6 +112,7 @@ export function ScoreTrend({ data, goal }: { data: ScorePoint[]; goal: number | 
           </LineChart>
         </ResponsiveContainer>
       </div>
+      )}
     </ChartCard>
   );
 }

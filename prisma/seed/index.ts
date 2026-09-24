@@ -307,7 +307,7 @@ async function main() {
     for (let t = 0; t < testCount; t++) {
       const test = fullTests[t % fullTests.length];
       const when = new Date(now - (38 - t * (isDemo ? 11 : 14)) * DAY);
-      const skill = Math.min(0.97, s.ability - 0.12 + t * 0.05);
+      const skill = Math.min(0.97, s.ability - 0.02 + t * 0.04);
       const answers: Record<string, string> = {};
       const score = { RW: [0, 0], MATH: [0, 0] } as Record<Section, [number, number]>;
       for (const mod of test.modules) {

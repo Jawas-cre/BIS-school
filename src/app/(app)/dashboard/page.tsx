@@ -116,7 +116,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Questions answered" value={totals.answered.toLocaleString()} hint={`${totals.distinct} unique questions`} icon={<BookOpenCheck className="size-4" />} />
-        <StatTile label="Accuracy" value={`${totals.accuracy}%`} hint="Across all practice" icon={<Target className="size-4" />} />
+        <StatTile label="Accuracy" value={totals.answered ? `${totals.accuracy}%` : "—"} hint="Across all practice" icon={<Target className="size-4" />} />
         <StatTile label="Mock tests" value={totals.tests} hint="Completed" icon={<ClipboardCheck className="size-4" />} />
         <StatTile label="Words mastered" value={totals.mastered} hint={`${totals.units} roadmap units done`} icon={<Languages className="size-4" />} />
       </div>
