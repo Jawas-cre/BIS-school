@@ -335,6 +335,12 @@ export const settings = defineMessages({
     saved: "Center settings saved",
     enterBranchName: "Enter a branch name",
     branchAdded: "Branch added",
+    versionTitle: "Software version",
+    updatesOn: "BIS Learn updates itself from GitHub while the start-here window is open. Refresh the page after an update to see what's new.",
+    updatesOff: 'Automatic updates are off (BIS_UPDATES="off" in the .env file).',
+    version: "Version",
+    released: "Released",
+    installed: "Installed on this computer",
   },
   uz: {
     subtitle: "Markazingiz profili, brend rangi, filiallari va taklif kodi.",
@@ -366,6 +372,12 @@ export const settings = defineMessages({
     saved: "Markaz sozlamalari saqlandi",
     enterBranchName: "Filial nomini kiriting",
     branchAdded: "Filial qoʻshildi",
+    versionTitle: "Dastur versiyasi",
+    updatesOn: "BIS Learn start-here oynasi ochiq turganda GitHub’dan oʻzini oʻzi yangilaydi. Yangilanishdan soʻng yangiliklarni koʻrish uchun sahifani yangilang.",
+    updatesOff: 'Avtomatik yangilanish oʻchirilgan (.env faylida BIS_UPDATES="off").',
+    version: "Versiya",
+    released: "Chiqarilgan sana",
+    installed: "Bu kompyuterga oʻrnatilgan",
   },
 });
 
