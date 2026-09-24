@@ -1,0 +1,408 @@
+// BIS Prep — multi-center SAT learning platform.
+// SQLite for local development; switch `provider` to "postgresql" for production.
+// String columns are used instead of enums/Json so the schema stays portable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenancy ────────────────────────────────────────────────────────────────
+
+model Center {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  city       String?
+  about      String?
+  accent     String   @default("#2563eb") // brand color used across the center's UI
+  inviteCode String   @unique // students join a center with this code
+  createdAt  DateTime @default(now())
+
+  branches   Branch[]
+  users      User[]
+  groups     Group[]
+  questions  Question[]
+  tests      Test[]
+  units      RoadmapUnit[]
+  vocabDecks VocabDeck[]
+  library    LibraryItem[]
+  news       NewsPost[]
+}
+
+model Branch {
+  id       String  @id @default(cuid())
+  centerId String
+  name     String
+  address  String?
+  phone    String?
+
+  center Center  @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  users  User[]
+  groups Group[]
+
+  @@index([centerId])
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  centerId  String
+  branchId  String?
+  teacherId String?
+  name      String
+  schedule  String? // e.g. "Mon/Wed/Fri 16:00"
+  createdAt DateTime @default(now())
+
+  center   Center        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  branch   Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  teacher  User?         @relation("GroupTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  students User[]        @relation("GroupStudents")
+  unlocks  GroupUnlock[]
+
+  @@index([centerId])
+}
+
+// ─── Users ──────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         String    @default("STUDENT") // SUPER_ADMIN | CENTER_ADMIN | TEACHER | STUDENT
+  centerId     String?
+  branchId     String?
+  groupId      String?
+  onboarded    Boolean   @default(false)
+  targetScore  Int?
+  examDate     DateTime?
+  targetUniId  String?
+  xp           Int       @default(0)
+  streak       Int       @default(0)
+  bestStreak   Int       @default(0)
+  lastActiveOn String? // YYYY-MM-DD of last practice, used for streaks
+  createdAt    DateTime  @default(now())
+
+  center        Center?           @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  branch        Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  group         Group?            @relation("GroupStudents", fields: [groupId], references: [id], onDelete: SetNull)
+  teaching      Group[]           @relation("GroupTeacher")
+  targetUni     University?       @relation(fields: [targetUniId], references: [id], onDelete: SetNull)
+  answers       QuestionAttempt[]
+  bookmarks     Bookmark[]
+  testAttempts  TestAttempt[]
+  unitProgress  UnitProgress[]
+  vocab         UserWord[]
+  conversations AiConversation[]
+  activity      ActivityDay[]
+  newsPosts     NewsPost[]
+
+  @@index([centerId])
+  @@index([groupId])
+}
+
+// One row per user per day with activity — powers streaks and the heatmap.
+model ActivityDay {
+  id        String @id @default(cuid())
+  userId    String
+  day       String // YYYY-MM-DD
+  questions Int    @default(0)
+  correct   Int    @default(0)
+  minutes   Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+}
+
+// ─── Question bank ──────────────────────────────────────────────────────────
+
+model Question {
+  id          String   @id @default(cuid())
+  centerId    String? // null = platform-wide question visible to every center
+  section     String // MATH | RW
+  domain      String
+  skill       String
+  difficulty  String // EASY | MEDIUM | HARD
+  type        String   @default("MCQ") // MCQ | SPR (student-produced response)
+  passage     String?
+  stem        String
+  choices     String   @default("[]") // JSON string[] for MCQ
+  answer      String // "A".."D" for MCQ; accepted values separated by "|" for SPR
+  explanation String
+  createdAt   DateTime @default(now())
+
+  center    Center?           @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  attempts  QuestionAttempt[]
+  bookmarks Bookmark[]
+  inTests   TestQuestion[]
+
+  @@index([section, domain, skill])
+  @@index([centerId])
+}
+
+model QuestionAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  response   String
+  correct    Boolean
+  seconds    Int      @default(0)
+  source     String   @default("BANK") // BANK | TEST | ROADMAP
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, questionId])
+  @@index([userId, createdAt])
+}
+
+model Bookmark {
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+}
+
+// ─── Mock tests ─────────────────────────────────────────────────────────────
+
+model Test {
+  id          String   @id @default(cuid())
+  centerId    String?
+  title       String
+  description String?
+  kind        String // FULL | SECTION | TOPIC
+  section     String? // for SECTION/TOPIC tests
+  skill       String? // for TOPIC tests
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  center   Center?       @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  modules  TestModule[]
+  attempts TestAttempt[]
+
+  @@index([centerId])
+}
+
+model TestModule {
+  id       String @id @default(cuid())
+  testId   String
+  order    Int
+  section  String // MATH | RW
+  title    String
+  minutes  Int
+
+  test      Test           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questions TestQuestion[]
+}
+
+model TestQuestion {
+  moduleId   String
+  questionId String
+  order      Int
+
+  module   TestModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  question Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([moduleId, questionId])
+}
+
+model TestAttempt {
+  id             String    @id @default(cuid())
+  userId         String
+  testId         String
+  status         String    @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED
+  moduleIndex    Int       @default(0)
+  moduleStarted  DateTime  @default(now())
+  answers        String    @default("{}") // JSON { [questionId]: response }
+  flagged        String    @default("[]") // JSON questionId[]
+  correct        Int?
+  total          Int?
+  rwScore        Int?
+  mathScore      Int?
+  totalScore     Int?
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+// ─── Roadmap (structured course with video lessons) ─────────────────────────
+
+model RoadmapUnit {
+  id          String   @id @default(cuid())
+  centerId    String?
+  order       Int
+  title       String
+  section     String // MATH | RW
+  skill       String? // practice questions are drawn from this skill
+  summary     String
+  videoUrl    String?
+  notes       String   @default("") // markdown lesson notes
+  createdAt   DateTime @default(now())
+
+  center   Center?        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  progress UnitProgress[]
+  unlocks  GroupUnlock[]
+
+  @@index([centerId, order])
+}
+
+model UnitProgress {
+  userId      String
+  unitId      String
+  quizScore   Int? // percent
+  completedAt DateTime?
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit RoadmapUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@id([userId, unitId])
+}
+
+// Teachers can unlock roadmap units for a whole group ahead of sequential progress.
+model GroupUnlock {
+  groupId    String
+  unitId     String
+  unlockedAt DateTime @default(now())
+
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  unit  RoadmapUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, unitId])
+}
+
+// ─── Vocabulary ─────────────────────────────────────────────────────────────
+
+model VocabDeck {
+  id          String  @id @default(cuid())
+  centerId    String?
+  title       String
+  description String?
+  level       String  @default("Core") // Core | Advanced | Expert
+
+  center Center?     @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  words  VocabWord[]
+}
+
+model VocabWord {
+  id         String @id @default(cuid())
+  deckId     String
+  word       String
+  pos        String // part of speech
+  definition String
+  example    String
+  synonyms   String @default("")
+
+  deck  VocabDeck  @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  users UserWord[]
+}
+
+// Leitner-box spaced repetition state per user per word.
+model UserWord {
+  userId     String
+  wordId     String
+  box        Int      @default(0) // 0 = new, 5 = mastered
+  nextReview DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word VocabWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([userId, wordId])
+}
+
+// ─── Library ────────────────────────────────────────────────────────────────
+
+model LibraryItem {
+  id          String   @id @default(cuid())
+  centerId    String?
+  title       String
+  author      String?
+  description String?
+  category    String // BOOK | PRACTICE | GUIDE | VIDEO
+  url         String
+  pages       Int?
+  createdAt   DateTime @default(now())
+
+  center Center? @relation(fields: [centerId], references: [id], onDelete: Cascade)
+}
+
+// ─── Top universities ───────────────────────────────────────────────────────
+
+model University {
+  id             String  @id @default(cuid())
+  name           String  @unique
+  country        String
+  city           String
+  lat            Float
+  lng            Float
+  rank           Int
+  acceptanceRate Float // percent
+  satLow         Int
+  satHigh        Int
+  tuition        Int // USD per year
+  aid            String // e.g. "Need-blind for internationals"
+  website        String
+  about          String
+
+  fans User[]
+}
+
+// ─── News / what's new ──────────────────────────────────────────────────────
+
+model NewsPost {
+  id        String   @id @default(cuid())
+  centerId  String? // null = platform announcement shown to every center
+  authorId  String?
+  title     String
+  body      String
+  tag       String   @default("Announcement") // Announcement | Update | Event | Tip
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  center Center? @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  author User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([centerId, createdAt])
+}
+
+// ─── AI assistant ───────────────────────────────────────────────────────────
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String      @default("New chat")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AiMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String // user | assistant
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
