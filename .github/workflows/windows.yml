@@ -1,5 +1,6 @@
 # Installs BIS Learn on Windows the way a center does — the zip, START-HERE-Windows.bat — as a
-# standard (non-administrator) Windows user, then checks the site in a browser.
+# standard (non-administrator) Windows user, then checks the site in a browser. The last step builds
+# with Turbopack too and lists the links it makes in .next; the production build (Webpack) makes none.
 name: Windows check
 
 on:
@@ -88,7 +89,7 @@ jobs:
           npx playwright install chromium | Out-Null
           node check.mjs
 
-      - name: Why builds use Webpack — a Turbopack build as the same user
+      - name: For comparison — a Turbopack build as the same user (informational)
         continue-on-error: true
         shell: pwsh
         run: |
@@ -107,7 +108,10 @@ jobs:
           Start-ScheduledTask -TaskName BisTurbopack
           $deadline = (Get-Date).AddMinutes(15)
           do { Start-Sleep -Seconds 10 } until (((Test-Path C:\bis\turbopack.log) -and (Select-String -Path C:\bis\turbopack.log -Pattern "exit code" -Quiet)) -or (Get-Date) -gt $deadline)
-          Get-Content C:\bis\turbopack.log -Tail 40
+          Get-Content C:\bis\turbopack.log -Tail 15
+          $links = @(Get-ChildItem C:\bis\bis-learn\.next -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue)
+          Write-Host "Links or junctions Turbopack made in .next: $($links.Count)"
+          $links | ForEach-Object { Write-Host "  $($_.FullName) -> $($_.Target)" }
 
       - name: Keep the logs
         if: always()

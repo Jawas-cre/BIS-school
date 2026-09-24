@@ -211,7 +211,7 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 | `npm run reset-password` | Set a new password for an account (asks for the email or teacher ID) |
 | `npm run zip` | Make `bis-learn.zip` for laptops, stamped with its version for the updater |
 | `npm run dev` | Development server |
-| `npm run build` / `npm start` | Production build (Webpack, which works on every Windows account) / server |
+| `npm run build` / `npm start` | Production build (Webpack; checked on Windows by `.github/workflows/windows.yml`) / server |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
 | `npm run db:push` | Sync the Prisma schema to the database |
 | `npm run db:seed` | Reset and reseed demo data |
