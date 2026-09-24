@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Search, UserPlus } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff, staffGroups } from "@/lib/auth";
 import { centerStudents } from "@/lib/admin";
 import { PageHeader, Avatar } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -21,11 +21,14 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
   const sp = await searchParams;
   const t = await getT();
   const S = t.adminStudents;
+  // Teachers see the students of their own groups; only center admins add student accounts.
+  const teacher = staff.role === "TEACHER";
+  const base = panelBase(staff.role);
   const q = typeof sp.q === "string" ? sp.q.toLowerCase().slice(0, 60) : "";
   const groupId = typeof sp.group === "string" ? sp.group : "";
   const [all, groups] = await Promise.all([
-    centerStudents(staff.centerId),
-    db.group.findMany({ where: { centerId: staff.centerId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    centerStudents(staff.centerId, { teacherId: teacher ? staff.id : undefined }),
+    db.group.findMany({ where: staffGroups(staff), orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   const students = all.filter(
     (s) => (!q || s.name.toLowerCase().includes(q) || s.email.includes(q)) && (!groupId || (groupId === "none" ? s.groups.length === 0 : s.groups.some((g) => g.id === groupId))),
@@ -33,11 +36,14 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t.nav.students} subtitle={fmt(S.subtitle, { students: plural(t.common.students, all.length), center: staff.center?.name ?? "" })} />
+      <PageHeader
+        title={teacher ? t.nav.myStudents : t.nav.students}
+        subtitle={teacher ? fmt(t.teacher.studentsSubtitle, { students: plural(t.common.students, all.length) }) : fmt(S.subtitle, { students: plural(t.common.students, all.length), center: staff.center?.name ?? "" })}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className={cn("grid gap-6", !teacher && "xl:grid-cols-[1fr_340px]")}>
         <div className="min-w-0">
-          <form className="mb-3 flex flex-col gap-2 sm:flex-row" action="/admin/students">
+          <form className="mb-3 flex flex-col gap-2 sm:flex-row" action={`${base}/students`}>
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
               <input name="q" defaultValue={q} placeholder={S.search} className="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm shadow-card outline-none focus:border-brand" />
@@ -47,7 +53,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
-              <option value="none">{S.notInGroup}</option>
+              {!teacher && <option value="none">{S.notInGroup}</option>}
             </select>
             <button className="h-10 rounded-xl bg-brand px-4 text-sm font-semibold text-white">{t.common.filter}</button>
           </form>
@@ -68,7 +74,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
                 {students.map((s) => (
                   <tr key={s.id} className="border-b border-line last:border-0 hover:bg-surface-2">
                     <td className="px-4 py-2.5">
-                      <Link href={`/admin/students/${s.id}`} className="flex items-center gap-3">
+                      <Link href={`${base}/students/${s.id}`} className="flex items-center gap-3">
                         <Avatar name={s.name} size={32} />
                         <span className="min-w-0">
                           <span className="block truncate font-semibold hover:text-brand">{s.name}</span>
@@ -89,14 +95,14 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
                   </tr>
                 ))}
                 {students.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{S.noStudents}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{teacher && all.length === 0 ? t.teacher.noStudents : S.noStudents}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        <Card className="self-start">
+        {!teacher && <Card className="self-start">
           <CardHeader title={S.addTitle} subtitle={S.addSubtitle} action={<UserPlus className="size-4 text-muted" />} />
           <CardBody>
             <ActionForm action={createStudent} submitLabel={S.createAccount} resetOnSuccess>
@@ -120,7 +126,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
               </Field>
             </ActionForm>
           </CardBody>
-        </Card>
+        </Card>}
       </div>
     </div>
   );

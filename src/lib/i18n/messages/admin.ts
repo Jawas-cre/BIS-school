@@ -275,26 +275,32 @@ export const adminGroups = defineMessages({
 
 export const staff = defineMessages({
   en: {
-    subtitle: "Teachers manage groups, content and students. Admins also manage staff and center settings.",
+    subtitle: "Teachers work in their own Teacher panel: their groups, their students and the learning content. Only admins use this admin panel.",
     you: "(you)",
     admin: "Admin",
     teacher: "Teacher",
+    owner: "Owner",
+    teacherId: "Teacher ID",
     removeConfirm: "Remove {name}'s account?",
     addTitle: "Add staff member",
     role: "Role",
     enterName: "Enter a full name",
     created: "Account created. Login: {email} · password: {password}",
+    createdTeacher: "Account created. Teacher ID: {id} · login: {id} or {email} · password: {password}",
   },
   uz: {
-    subtitle: "Oʻqituvchilar guruhlar, materiallar va oʻquvchilarni boshqaradi. Administratorlar xodimlar va markaz sozlamalarini ham boshqaradi.",
+    subtitle: "Oʻqituvchilar oʻz “Oʻqituvchi paneli”da ishlaydi: oʻz guruhlari, oʻquvchilari va oʻquv materiallari. Bu boshqaruv panelidan faqat administratorlar foydalanadi.",
     you: "(siz)",
     admin: "Administrator",
     teacher: "Oʻqituvchi",
+    owner: "Egasi",
+    teacherId: "Oʻqituvchi ID raqami",
     removeConfirm: "{name} hisobi oʻchirilsinmi?",
     addTitle: "Xodim qoʻshish",
     role: "Lavozim",
     enterName: "Ism-familiyani kiriting",
     created: "Hisob yaratildi. Login: {email} · parol: {password}",
+    createdTeacher: "Hisob yaratildi. Oʻqituvchi ID raqami: {id} · login: {id} yoki {email} · parol: {password}",
   },
 });
 
@@ -1016,6 +1022,8 @@ export const account = defineMessages({
     passwordSub: "Choose a password only you know. You'll use it the next time you log in.",
     confirm: "Repeat the new password",
     saved: "Your details are saved",
+    teacherId: "Your teacher ID",
+    teacherIdHint: "You can log in with this ID instead of your email.",
   },
   uz: {
     subtitle: "Ismingiz, kirish emaili va parolingiz.",
@@ -1024,5 +1032,38 @@ export const account = defineMessages({
     passwordSub: "Faqat oʻzingiz biladigan parol tanlang. Keyingi safar shu parol bilan kirasiz.",
     confirm: "Yangi parolni takrorlang",
     saved: "Maʼlumotlaringiz saqlandi",
+    teacherId: "Oʻqituvchi ID raqamingiz",
+    teacherIdHint: "Email oʻrniga shu ID raqam bilan ham kirishingiz mumkin.",
+  },
+});
+
+export const teacher = defineMessages({
+  en: {
+    title: "Teacher panel",
+    heading: "My classes",
+    welcome: "Welcome, {name}! 🎉",
+    subtitle: "How the students in your groups are doing this week.",
+    yourId: "Your teacher ID",
+    idHint: "Log in with this ID or with your email. Your center admin sees it on the Staff page too.",
+    inviteText: "Students sign up at {register} with this code. Your center admin can also make a code that puts students straight into your group.",
+    noGroups: "You don't teach any groups yet. Ask your center admin to assign you to a group.",
+    noStudents: "No students in your groups yet.",
+    studentsSubtitle: "{students} in the groups you teach.",
+    groupsSubtitle: "The groups you teach. Open a group to add students and unlock roadmap units for everyone in it.",
+    detailsByAdmin: "Only a center admin can change these details.",
+  },
+  uz: {
+    title: "Oʻqituvchi paneli",
+    heading: "Mening sinflarim",
+    welcome: "Xush kelibsiz, {name}! 🎉",
+    subtitle: "Guruhlaringizdagi oʻquvchilarning bu haftadagi natijalari.",
+    yourId: "Oʻqituvchi ID raqamingiz",
+    idHint: "Shu ID raqam yoki emailingiz bilan kiring. Markaz administratori uni “Xodimlar” sahifasida ham koʻradi.",
+    inviteText: "Oʻquvchilar {register} sahifasida shu kod bilan roʻyxatdan oʻtadi. Markaz administratori oʻquvchilarni toʻgʻridan-toʻgʻri guruhingizga qoʻshadigan kod ham yaratishi mumkin.",
+    noGroups: "Hozircha guruhingiz yoʻq. Markaz administratoridan sizni guruhga biriktirishini soʻrang.",
+    noStudents: "Guruhlaringizda hali oʻquvchilar yoʻq.",
+    studentsSubtitle: "Siz dars beradigan guruhlarda {students}.",
+    groupsSubtitle: "Siz dars beradigan guruhlar. Guruhni ochib, oʻquvchi qoʻshing va butun guruh uchun yoʻl xaritasi boʻlimlarini oching.",
+    detailsByAdmin: "Bu maʼlumotlarni faqat markaz administratori oʻzgartira oladi.",
   },
 });

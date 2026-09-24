@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff } from "@/lib/auth";
 import { visibleSubjects } from "@/lib/subjects";
 import { PageHeader } from "@/components/ui/misc";
 import { UnitForm } from "../unit-form";
@@ -11,11 +11,12 @@ export const generateMetadata = pageTitle((t) => t.adminRoadmap.newUnit);
 
 export default async function NewUnit({ searchParams }: PageProps<"/admin/roadmap/new">) {
   const staff = await requireStaff();
+  const base = panelBase(staff.role);
   const { subject: subjectId } = await searchParams;
   const subject = (await visibleSubjects(staff.centerId)).find((s) => s.id === subjectId);
-  if (!subject) redirect("/admin/roadmap");
+  if (!subject) redirect(`${base}/roadmap`);
   const customized = subject.centerId === staff.centerId || (await db.roadmapUnit.count({ where: { centerId: staff.centerId, subjectId: subject.id } })) > 0;
-  if (!customized) redirect(`/admin/roadmap?subject=${subject.id}`);
+  if (!customized) redirect(`${base}/roadmap?subject=${subject.id}`);
   const t = await getT();
   return (
     <div>

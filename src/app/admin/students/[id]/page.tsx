@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff, staffStudents } from "@/lib/auth";
 import { liveStreak } from "@/lib/activity";
 import { activityCalendar, subjectComparison, userTotals } from "@/lib/stats";
 import { roadmapOverview } from "@/lib/roadmap";
@@ -28,8 +28,10 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
   const { id } = await params;
   const { t, date, num } = await getI18n();
   const S = t.adminStudent;
+  // Teachers open the students of their own groups, read-only; center admins can also edit and remove them.
+  const admin = staff.role === "CENTER_ADMIN";
   const student = await db.user.findFirst({
-    where: { id, centerId: staff.centerId, role: "STUDENT" },
+    where: { id, ...staffStudents(staff) },
     include: { targetUni: true, memberships: { include: { group: { include: { subject: true } } } } },
   });
   if (!student) notFound();
@@ -51,7 +53,7 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
   return (
     <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/admin/students" className="hover:text-ink">{t.nav.students}</Link>
+        <Link href={`${panelBase(staff.role)}/students`} className="hover:text-ink">{admin ? t.nav.students : t.nav.myStudents}</Link>
         <ChevronRight className="size-3.5" />
         <span>{student.name}</span>
       </nav>
@@ -69,7 +71,7 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
           </div>
           {student.goal && <p className="mt-2 text-sm text-ink-2">{fmt(S.goal, { goal: student.goal })}</p>}
         </div>
-        {staff.role === "CENTER_ADMIN" && (
+        {admin && (
           <ConfirmAction action={removeStudent.bind(null, student.id)} label={S.removeLabel} confirm={fmt(S.removeConfirm, { name: student.name })}>
             <Trash2 className="size-4" /> {t.common.remove}
           </ConfirmAction>
@@ -85,12 +87,12 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2">
+        <div className={admin ? "xl:col-span-2" : "xl:col-span-3"}>
           <ScoreTrend
             data={attempts.map((a) => ({ label: date(a.finishedAt ?? a.startedAt, { year: undefined }), title: a.test.title, subject: a.test.subject?.name ?? t.common.mixed, score: a.score ?? 0 }))}
           />
         </div>
-        <Card>
+        {admin && <Card>
           <CardHeader title={S.editTitle} />
           <CardBody>
             <ActionForm action={updateStudent.bind(null, student.id)}>
@@ -117,15 +119,13 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
                 </div>
               </fieldset>
             </ActionForm>
-            {staff.role === "CENTER_ADMIN" && (
-              <div className="mt-5 border-t border-line pt-4">
-                <ActionForm action={resetStudentPassword.bind(null, student.id)} submitLabel={S.resetPassword} submitVariant="outline" pendingText={S.resetting}>
-                  <p className="text-sm text-muted">{S.resetText}</p>
-                </ActionForm>
-              </div>
-            )}
+            <div className="mt-5 border-t border-line pt-4">
+              <ActionForm action={resetStudentPassword.bind(null, student.id)} submitLabel={S.resetPassword} submitVariant="outline" pendingText={S.resetting}>
+                <p className="text-sm text-muted">{S.resetText}</p>
+              </ActionForm>
+            </div>
           </CardBody>
-        </Card>
+        </Card>}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">

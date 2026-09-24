@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireCenterAdmin, requireStaff } from "@/lib/auth";
+import { requireCenterAdmin, requireStaff, staffGroups } from "@/lib/auth";
+import { revalidatePanels } from "@/lib/panel";
+import { ensureTeacherId } from "@/lib/teacher-id";
 import type { ActionState } from "@/components/action-form";
 import { fmt } from "@/lib/i18n/format";
 import { getT } from "@/lib/i18n/server";
@@ -21,6 +23,11 @@ async function ownGroup(centerId: string, id: string | undefined | null) {
   return db.group.findFirst({ where: { id, centerId } });
 }
 
+/** A group this staff member may manage: any of the center's for admins, only their own for teachers. */
+async function managedGroup(staff: { id: string; role: string; centerId: string }, id: string) {
+  return db.group.findFirst({ where: { id, ...staffGroups(staff) } });
+}
+
 async function ownGroups(centerId: string, ids: string[]) {
   return ids.length ? db.group.findMany({ where: { id: { in: ids }, centerId } }) : [];
 }
@@ -32,8 +39,10 @@ async function ownBranch(centerId: string, id: string | undefined | null) {
 
 // ─── Students ───────────────────────────────────────────────────────────────
 
+// Student accounts are created and edited by center admins; teachers only see their groups' students.
+
 export async function createStudent(_: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   const parsed = z
     .object({
@@ -67,7 +76,7 @@ export async function createStudent(_: ActionState, fd: FormData): Promise<Actio
 }
 
 export async function updateStudent(studentId: string, _: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   const student = await db.user.findFirst({ where: { id: studentId, centerId: staff.centerId, role: "STUDENT" } });
   if (!student) return { error: t.adminStudents.notFound };
@@ -133,8 +142,10 @@ async function groupData(centerId: string, fd: FormData) {
   return { data: { name: d.name, schedule: d.schedule || null, branchId: branch?.id ?? null, teacherId: teacher?.id ?? null, subjectId: subject?.id ?? null } } as const;
 }
 
+// Center admins create groups and assign teachers; a teacher manages the members and roadmap of their own groups.
+
 export async function createGroup(_: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const res = await groupData(staff.centerId, fd);
   if ("error" in res) return { error: res.error };
   const group = await db.group.create({ data: { ...res.data, centerId: staff.centerId } });
@@ -143,7 +154,7 @@ export async function createGroup(_: ActionState, fd: FormData): Promise<ActionS
 }
 
 export async function updateGroup(groupId: string, _: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   if (!(await ownGroup(staff.centerId, groupId))) return { error: t.adminGroups.notFound };
   const res = await groupData(staff.centerId, fd);
@@ -163,30 +174,30 @@ export async function deleteGroup(groupId: string) {
 export async function addToGroup(groupId: string, _: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
   const t = await getT();
-  const group = await ownGroup(staff.centerId, groupId);
+  const group = await managedGroup(staff, groupId);
   if (!group) return { error: t.adminGroups.notFound };
   const studentId = String(fd.get("studentId") ?? "");
   const student = await db.user.findFirst({ where: { id: studentId, centerId: staff.centerId, role: "STUDENT" } });
   if (!student) return { error: t.adminGroups.chooseStudentError };
   await db.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: student.id } }, create: { groupId: group.id, userId: student.id }, update: {} });
   if (!student.branchId && group.branchId) await db.user.update({ where: { id: student.id }, data: { branchId: group.branchId } });
-  revalidatePath(`/admin/groups/${groupId}`);
+  revalidatePanels(`/groups/${groupId}`);
   return { ok: fmt(t.adminGroups.added, { name: student.name }) };
 }
 
 export async function removeFromGroup(groupId: string, studentId: string) {
   const staff = await requireStaff();
-  await db.groupMember.deleteMany({ where: { groupId, userId: studentId, group: { centerId: staff.centerId } } });
-  revalidatePath(`/admin/groups/${groupId}`);
+  await db.groupMember.deleteMany({ where: { groupId, userId: studentId, group: staffGroups(staff) } });
+  revalidatePanels(`/groups/${groupId}`);
 }
 
 export async function toggleUnlock(groupId: string, unitId: string) {
   const staff = await requireStaff();
-  if (!(await ownGroup(staff.centerId, groupId))) return;
+  if (!(await managedGroup(staff, groupId))) return;
   const key = { groupId_unitId: { groupId, unitId } };
   if (await db.groupUnlock.findUnique({ where: key })) await db.groupUnlock.delete({ where: key });
   else await db.groupUnlock.create({ data: { groupId, unitId } });
-  revalidatePath(`/admin/groups/${groupId}`);
+  revalidatePanels(`/groups/${groupId}`);
 }
 
 // ─── Staff ──────────────────────────────────────────────────────────────────
@@ -208,16 +219,18 @@ export async function createStaff(_: ActionState, fd: FormData): Promise<ActionS
   if (await db.user.findUnique({ where: { email: d.email } })) return { error: t.adminStudents.emailTaken };
   const password = d.password && d.password.length >= 8 ? d.password : tempPassword();
   const branch = await ownBranch(admin.centerId, d.branchId);
-  await db.user.create({
+  const user = await db.user.create({
     data: { name: d.name, email: d.email, role: d.role, centerId: admin.centerId, branchId: branch?.id ?? null, onboarded: true, passwordHash: await bcrypt.hash(password, 10) },
   });
+  const loginId = await ensureTeacherId(user);
   revalidatePath("/admin/staff");
-  return { ok: fmt(t.staff.created, { email: d.email, password }) };
+  return { ok: loginId ? fmt(t.staff.createdTeacher, { id: loginId, email: d.email, password }) : fmt(t.staff.created, { email: d.email, password }) };
 }
 
 export async function removeStaff(userId: string) {
   const admin = await requireCenterAdmin();
   if (userId === admin.id) return;
-  await db.user.deleteMany({ where: { id: userId, centerId: admin.centerId, role: { in: ["TEACHER", "CENTER_ADMIN"] } } });
+  // The owner who installed the site can't be removed by another admin.
+  await db.user.deleteMany({ where: { id: userId, centerId: admin.centerId, role: { in: ["TEACHER", "CENTER_ADMIN"] }, isOwner: false } });
   revalidatePath("/admin/staff");
 }

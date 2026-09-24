@@ -58,7 +58,7 @@ export default async function VocabularyPage() {
             const dueHere = states.filter((s) => s && s.nextReview.getTime() <= now && s.box < 5).length;
             const fresh = states.filter((s) => !s).length;
             return (
-              <Link key={d.id} href={`/vocabulary/${d.id}`} className="group flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-card hover:border-line-strong">
+              <Link key={d.id} href={`/vocabulary/${d.id}`} className="pressable-card group flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-card hover:border-line-strong">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <Badge tone={d.level === "Beginner" ? "success" : d.level === "Intermediate" ? "brand" : "warning"}>{deckLevel(t, d.level)}</Badge>

@@ -1,6 +1,6 @@
 import { Trash2, X } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { requireCenterAdmin } from "@/lib/auth";
 import { visibleSubjects } from "@/lib/subjects";
 import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { getT, pageTitle } from "@/lib/i18n/server";
 export const generateMetadata = pageTitle((t) => t.nav.subjects);
 
 export default async function SubjectsPage() {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   const S = t.adminSubjects;
   const subjects = await visibleSubjects(staff.centerId);

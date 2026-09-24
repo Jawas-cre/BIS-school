@@ -21,7 +21,7 @@ export async function AssistantShell({ userId, conversationId, initialDraft }: {
     <div className="-mx-4 -my-6 grid h-[calc(100dvh-4rem)] sm:-mx-6 lg:-mx-8 lg:-my-8 lg:grid-cols-[280px_1fr]">
       <aside className="hidden min-h-0 flex-col border-r border-line bg-surface lg:flex">
         <div className="p-3">
-          <Link href="/assistant" className="flex h-10 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white hover:bg-brand-strong">
+          <Link href="/assistant" className="pressable flex h-10 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white hover:bg-brand-strong">
             <Plus className="size-4" /> {A.newChat}
           </Link>
         </div>

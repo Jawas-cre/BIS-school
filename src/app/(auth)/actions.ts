@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { createSession, deleteSession } from "@/lib/session";
 import { homeFor } from "@/lib/auth";
 import { resolveInvite, consumeInvite } from "@/lib/invites";
+import { ensureTeacherId, looksLikeTeacherId, normalizeTeacherId } from "@/lib/teacher-id";
 import { randomCode, slugify } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import { getT } from "@/lib/i18n/server";
@@ -26,16 +27,21 @@ function safeNext(next: FormDataEntryValue | null) {
   return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
+/** Log in with an email, or — for teachers — their teacher ID (e.g. T1001). */
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
   const t = await getT();
-  const { email } = fields(t);
-  const parsed = z.object({ email, password: z.string().min(1, t.auth.enterPassword) }).safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  const parsed = z
+    .object({ login: z.string().trim().min(1, t.auth.enterLogin), password: z.string().min(1, t.auth.enterPassword) })
+    .safeParse({ login: formData.get("login"), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const user = await db.user.findUnique({ where: { email: parsed.data.email } });
+  const { login: typed } = parsed.data;
+  const where = typed.includes("@")
+    ? { email: typed.toLowerCase() }
+    : looksLikeTeacherId(typed)
+      ? { loginId: normalizeTeacherId(typed) }
+      : null;
+  const user = where ? await db.user.findUnique({ where }) : null;
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     return { error: t.auth.incorrectLogin };
   }
@@ -79,8 +85,9 @@ export async function registerWithCode(_: FormState, formData: FormData): Promis
       memberships: group && !teacher ? { create: { groupId: group.id } } : undefined,
     },
   });
+  await ensureTeacherId(user);
   await createSession(user);
-  redirect(teacher ? "/admin" : "/onboarding");
+  redirect(teacher ? "/teacher?welcome=1" : "/onboarding");
 }
 
 const centerFields = (t: Dict) => ({
@@ -90,7 +97,7 @@ const centerFields = (t: Dict) => ({
 });
 
 /** Creates a center with its main branch and its first admin, then signs the admin in. */
-async function createCenterWithAdmin(t: Dict, d: { centerName: string; city?: string; name: string; email: string; password: string }) {
+async function createCenterWithAdmin(t: Dict, d: { centerName: string; city?: string; name: string; email: string; password: string }, owner = false) {
   let slug = slugify(d.centerName) || "center";
   if (await db.center.findUnique({ where: { slug } })) slug = `${slug}-${randomCode(4).toLowerCase()}`;
 
@@ -110,6 +117,7 @@ async function createCenterWithAdmin(t: Dict, d: { centerName: string; city?: st
         email: d.email,
         passwordHash: await bcrypt.hash(d.password, 10),
         role: "CENTER_ADMIN",
+        isOwner: owner,
         centerId: center.id,
         onboarded: true,
       },
@@ -138,7 +146,8 @@ export async function setupFirstCenter(_: FormState, formData: FormData): Promis
     .refine((d) => d.password === d.confirm, { message: t.validation.passwordsDiffer })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  await createCenterWithAdmin(t, parsed.data);
+  // The person installing the site owns it: they also get the platform settings.
+  await createCenterWithAdmin(t, parsed.data, true);
   redirect("/admin?welcome=1");
 }
 

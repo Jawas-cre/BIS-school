@@ -10,6 +10,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "setup": "node scripts/setup.mjs",
+    "reset-password": "node scripts/owner.mjs --reset-password",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireStaff, visibleTo } from "@/lib/auth";
+import { panelBase, requireStaff, visibleTo } from "@/lib/auth";
+import { revalidatePanels } from "@/lib/panel";
 import type { ActionState } from "@/components/action-form";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import { fmt, plural } from "@/lib/i18n/format";
@@ -74,14 +75,14 @@ export async function saveQuestion(questionId: string | null, _: ActionState, fd
   } else {
     await db.question.create({ data: { ...data, centerId: staff.centerId } });
   }
-  revalidatePath("/admin/questions");
-  redirect("/admin/questions?saved=1");
+  revalidatePanels("/questions");
+  redirect(`${panelBase(staff.role)}/questions?saved=1`);
 }
 
 export async function deleteQuestion(questionId: string) {
   const staff = await requireStaff();
   await db.question.deleteMany({ where: { id: questionId, centerId: staff.centerId } });
-  revalidatePath("/admin/questions");
+  revalidatePanels("/questions");
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ export async function createTestFromBank(_: ActionState, fd: FormData): Promise<
       },
     },
   });
-  revalidatePath("/admin/tests");
+  revalidatePanels("/tests");
   return { ok: fmt(T.created, { title: d.title, questions: plural(t.common.questions, d.count) }) };
 }
 
@@ -152,13 +153,13 @@ export async function toggleTestPublished(testId: string) {
   const staff = await requireStaff();
   const test = await db.test.findFirst({ where: { id: testId, centerId: staff.centerId } });
   if (test) await db.test.update({ where: { id: testId }, data: { published: !test.published } });
-  revalidatePath("/admin/tests");
+  revalidatePanels("/tests");
 }
 
 export async function deleteTest(testId: string) {
   const staff = await requireStaff();
   await db.test.deleteMany({ where: { id: testId, centerId: staff.centerId } });
-  revalidatePath("/admin/tests");
+  revalidatePanels("/tests");
 }
 
 // ─── Roadmap ────────────────────────────────────────────────────────────────
@@ -173,13 +174,13 @@ export async function customizeRoadmap(subjectId: string) {
       data: base.map((u) => ({ centerId: staff.centerId, subjectId, topicId: u.topicId, order: u.order, title: u.title, summary: u.summary, videoUrl: u.videoUrl, notes: u.notes })),
     });
   }
-  revalidatePath("/admin/roadmap");
+  revalidatePanels("/roadmap");
 }
 
 export async function resetRoadmap(subjectId: string) {
   const staff = await requireStaff();
   await db.roadmapUnit.deleteMany({ where: { centerId: staff.centerId, subjectId } });
-  revalidatePath("/admin/roadmap");
+  revalidatePanels("/roadmap");
 }
 
 export async function saveUnit(unitId: string | null, subjectId: string, _: ActionState, fd: FormData): Promise<ActionState> {
@@ -208,8 +209,8 @@ export async function saveUnit(unitId: string | null, subjectId: string, _: Acti
     const last = await db.roadmapUnit.findFirst({ where: { centerId: staff.centerId, subjectId }, orderBy: { order: "desc" } });
     await db.roadmapUnit.create({ data: { ...data, subjectId, centerId: staff.centerId, order: (last?.order ?? -1) + 1 } });
   }
-  revalidatePath("/admin/roadmap");
-  redirect(`/admin/roadmap?subject=${subjectId}`);
+  revalidatePanels("/roadmap");
+  redirect(`${panelBase(staff.role)}/roadmap?subject=${subjectId}`);
 }
 
 export async function moveUnit(unitId: string, direction: -1 | 1) {
@@ -224,13 +225,13 @@ export async function moveUnit(unitId: string, direction: -1 | 1) {
     db.roadmapUnit.update({ where: { id: units[i].id }, data: { order: units[j].order } }),
     db.roadmapUnit.update({ where: { id: units[j].id }, data: { order: units[i].order } }),
   ]);
-  revalidatePath("/admin/roadmap");
+  revalidatePanels("/roadmap");
 }
 
 export async function deleteUnit(unitId: string) {
   const staff = await requireStaff();
   await db.roadmapUnit.deleteMany({ where: { id: unitId, centerId: staff.centerId } });
-  revalidatePath("/admin/roadmap");
+  revalidatePanels("/roadmap");
 }
 
 // ─── Vocabulary ─────────────────────────────────────────────────────────────
@@ -263,7 +264,7 @@ export async function createDeck(_: ActionState, fd: FormData): Promise<ActionSt
       words: { create: parsed.words },
     },
   });
-  revalidatePath("/admin/vocabulary");
+  revalidatePanels("/vocabulary");
   return { ok: fmt(t.adminVocab.created, { words: plural(t.common.words, parsed.words.length) }) };
 }
 
@@ -275,14 +276,14 @@ export async function addWords(deckId: string, _: ActionState, fd: FormData): Pr
   if ("error" in parsed) return { error: parsed.error };
   if (!parsed.words.length) return { error: t.adminVocab.errOneWord };
   await db.vocabWord.createMany({ data: parsed.words.map((w) => ({ ...w, deckId })) });
-  revalidatePath("/admin/vocabulary");
+  revalidatePanels("/vocabulary");
   return { ok: fmt(t.adminVocab.added, { words: plural(t.common.words, parsed.words.length) }) };
 }
 
 export async function deleteDeck(deckId: string) {
   const staff = await requireStaff();
   await db.vocabDeck.deleteMany({ where: { id: deckId, centerId: staff.centerId } });
-  revalidatePath("/admin/vocabulary");
+  revalidatePanels("/vocabulary");
 }
 
 // ─── Library ────────────────────────────────────────────────────────────────
@@ -307,14 +308,14 @@ export async function createLibraryItem(_: ActionState, fd: FormData): Promise<A
   await db.libraryItem.create({
     data: { centerId: staff.centerId, subjectId: subject?.id ?? null, title: d.title, author: d.author || null, description: d.description || null, category: d.category, url: d.url, pages: typeof d.pages === "number" ? d.pages : null },
   });
-  revalidatePath("/admin/library");
+  revalidatePanels("/library");
   return { ok: L.added };
 }
 
 export async function deleteLibraryItem(itemId: string) {
   const staff = await requireStaff();
   await db.libraryItem.deleteMany({ where: { id: itemId, centerId: staff.centerId } });
-  revalidatePath("/admin/library");
+  revalidatePanels("/library");
 }
 
 // ─── Announcements ──────────────────────────────────────────────────────────
@@ -333,7 +334,7 @@ export async function createNews(_: ActionState, fd: FormData): Promise<ActionSt
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   await db.newsPost.create({ data: { centerId: staff.centerId, authorId: staff.id, title: d.title, body: d.body, tag: d.tag, pinned: Boolean(d.pinned) } });
-  revalidatePath("/admin/news");
+  revalidatePanels("/news");
   revalidatePath("/news");
   return { ok: N.published };
 }
@@ -342,11 +343,11 @@ export async function togglePin(postId: string) {
   const staff = await requireStaff();
   const post = await db.newsPost.findFirst({ where: { id: postId, centerId: staff.centerId } });
   if (post) await db.newsPost.update({ where: { id: postId }, data: { pinned: !post.pinned } });
-  revalidatePath("/admin/news");
+  revalidatePanels("/news");
 }
 
 export async function deleteNews(postId: string) {
   const staff = await requireStaff();
   await db.newsPost.deleteMany({ where: { id: postId, centerId: staff.centerId } });
-  revalidatePath("/admin/news");
+  revalidatePanels("/news");
 }

@@ -232,7 +232,8 @@ async function main() {
 
   if (NO_DEMO) {
     console.log("\nDone. Learning content is ready, with no demo accounts.");
-    console.log("Open the site to create your own center and admin password.");
+    // The double-click launcher asks for the admin's email and password itself.
+    if (!process.env.BIS_LAUNCHER) console.log("Open the site to create your own center and admin password.");
     return;
   }
 
@@ -259,9 +260,9 @@ async function main() {
     db.branch.create({ data: { centerId: center.id, name: "Yunusobod branch", address: "Amir Temur St 108, Tashkent", phone: "+998 71 200 34 34" } }),
   ]);
   await db.user.create({ data: { email: "admin@demo.uz", name: "Kamola Rashidova", passwordHash: hash, role: "CENTER_ADMIN", centerId: center.id, onboarded: true } });
-  const jasur = await db.user.create({ data: { email: "teacher@demo.uz", name: "Jasur Tursunov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
-  const malika = await db.user.create({ data: { email: "teacher2@demo.uz", name: "Malika Yusupova", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: yunusobod.id, onboarded: true } });
-  const otabek = await db.user.create({ data: { email: "teacher3@demo.uz", name: "Otabek Rahimov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
+  const jasur = await db.user.create({ data: { email: "teacher@demo.uz", loginId: "T1001", name: "Jasur Tursunov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
+  const malika = await db.user.create({ data: { email: "teacher2@demo.uz", loginId: "T1002", name: "Malika Yusupova", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: yunusobod.id, onboarded: true } });
+  const otabek = await db.user.create({ data: { email: "teacher3@demo.uz", loginId: "T1003", name: "Otabek Rahimov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
 
   const groupDefs = [
     { key: "math", name: "Mathematics · Grade 9 A", subject: "Mathematics", teacher: jasur, branch: chilonzor, schedule: "Mon / Wed / Fri · 15:00", unlocked: 3 },
@@ -458,7 +459,7 @@ async function main() {
 
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
-  console.log("  teacher@demo.uz    – teacher");
+  console.log("  teacher@demo.uz    – teacher (or log in with the teacher ID T1001)");
   console.log("  admin@demo.uz      – center admin");
   console.log("  Invite codes: DEMO24 (students), MATH9A (students, joins Mathematics · Grade 9 A), TEACH24 (teachers)");
   console.log("  owner@bislearn.uz  – platform owner");

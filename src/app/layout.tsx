@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // Applies the saved color mode before first paint. Without a saved choice it follows the
 // device, and keeps following it when the device switches between light and dark.
-const themeScript = `(function(){var d=document.documentElement,m=matchMedia("(prefers-color-scheme: dark)");function a(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=m.matches?"dark":"light";d.dataset.theme=t}a();m.addEventListener("change",a);addEventListener("storage",function(e){if(e.key==="theme")a()})})()`;
+const themeScript = `(function(){var d=document.documentElement,m=matchMedia("(prefers-color-scheme: dark)");function a(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=m.matches?"dark":"light";d.dataset.theme=t}a();m.addEventListener("change",function(){document.startViewTransition&&!matchMedia("(prefers-reduced-motion: reduce)").matches?document.startViewTransition(a):a()});addEventListener("storage",function(e){if(e.key==="theme")a()})})()`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const { locale } = await getI18n();

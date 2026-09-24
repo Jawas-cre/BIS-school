@@ -30,6 +30,19 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/settings", label: "settings", icon: "Settings" },
 ];
 
+/** Teachers: their own groups and students, plus the center's learning content. */
+export const TEACHER_NAV: NavItem[] = [
+  { href: "/teacher", label: "overview", icon: "LayoutDashboard" },
+  { href: "/teacher/groups", label: "myGroups", icon: "Layers" },
+  { href: "/teacher/students", label: "myStudents", icon: "Users" },
+  { href: "/teacher/questions", label: "adminQuestions", icon: "ListChecks" },
+  { href: "/teacher/tests", label: "tests", icon: "ClipboardCheck" },
+  { href: "/teacher/roadmap", label: "roadmap", icon: "Map" },
+  { href: "/teacher/vocabulary", label: "vocabulary", icon: "Languages" },
+  { href: "/teacher/library", label: "library", icon: "Library" },
+  { href: "/teacher/news", label: "announcements", icon: "Megaphone" },
+];
+
 export const PLATFORM_NAV: NavItem[] = [
   { href: "/platform", label: "centers", icon: "Building2" },
   { href: "/platform/universities", label: "platformUniversities", icon: "GraduationCap" },

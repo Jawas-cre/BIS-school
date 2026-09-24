@@ -60,13 +60,15 @@ export type ShellUser = {
   name: string;
   email: string;
   role: string;
+  /** Teachers' login ID, shown under their name. */
+  loginId?: string | null;
   streak: number;
   xp: number;
   centerName: string | null;
 };
 
 function isActive(pathname: string, href: string) {
-  if (href === "/admin" || href === "/platform" || href === "/dashboard") return pathname === href;
+  if (href === "/admin" || href === "/teacher" || href === "/platform" || href === "/dashboard") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -75,15 +77,16 @@ export function AppShell({
   user,
   accent,
   area,
-  switchLink,
+  switchLinks = [],
   logoutAction,
   children,
 }: {
   nav: NavItem[];
   user: ShellUser;
   accent?: string | null;
-  area: "student" | "admin" | "platform";
-  switchLink?: { href: string; label: keyof Dict["nav"] } | null;
+  area: "student" | "admin" | "teacher" | "platform";
+  /** Links to the user's other areas, e.g. the student view or the platform settings. */
+  switchLinks?: { href: string; label: keyof Dict["nav"] }[];
   logoutAction: () => Promise<void>;
   children: ReactNode;
 }) {
@@ -107,9 +110,10 @@ export function AppShell({
           </div>
         </div>
       </div>
-      {area === "admin" && (
-        <div className="mx-4 mb-2 rounded-lg bg-surface-2 px-3 py-1.5 text-[11px] font-bold tracking-wider text-muted uppercase">
-          {user.role === "CENTER_ADMIN" ? t.shell.centerAdminPanel : t.shell.teacherPanel}
+      {(area === "admin" || area === "teacher") && (
+        <div className="mx-4 mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-1.5 text-[11px] font-bold tracking-wider text-muted uppercase">
+          <span className="truncate">{area === "admin" ? t.shell.centerAdminPanel : t.shell.teacherPanel}</span>
+          {user.loginId && <span className="shrink-0 font-mono tracking-normal text-brand normal-case">{user.loginId}</span>}
         </div>
       )}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label={t.shell.mainNav}>
@@ -122,7 +126,7 @@ export function AppShell({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold transition-colors",
+                "pressable group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
                 active ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
               )}
             >
@@ -136,19 +140,20 @@ export function AppShell({
         })}
       </nav>
       <div className="space-y-0.5 border-t border-line p-3">
-        {switchLink && (
+        {switchLinks.map((link) => (
           <Link
-            href={switchLink.href}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+            key={link.href}
+            href={link.href}
+            className="pressable flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
           >
             <ArrowLeftRight className="size-[18px] text-muted" />
-            {t.nav[switchLink.label]}
+            {t.nav[link.label]}
           </Link>
-        )}
+        ))}
         <Link
           href={accountHref}
           className={cn(
-            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
+            "pressable flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
             isActive(pathname, accountHref) ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
           )}
         >
@@ -220,7 +225,7 @@ export function AppShell({
             <ThemeMenu />
             <Link
               href={accountHref}
-              className="flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
+              className="pressable flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
             >
               <Avatar name={user.name} size={32} />
               <span className="hidden text-left leading-tight sm:block">

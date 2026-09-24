@@ -26,12 +26,25 @@ function applyTheme() {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
 }
 
+/** Switches colors with a short cross-fade instead of a hard cut (styles in globals.css). */
+function applySmoothly() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return applyTheme();
+  if (document.startViewTransition) {
+    document.startViewTransition(applyTheme);
+    return;
+  }
+  const root = document.documentElement;
+  root.classList.add("theme-fading");
+  applyTheme();
+  window.setTimeout(() => root.classList.remove("theme-fading"), 450);
+}
+
 function setMode(mode: Mode) {
   try {
     if (mode === "system") localStorage.removeItem(STORAGE_KEY);
     else localStorage.setItem(STORAGE_KEY, mode);
   } catch {}
-  applyTheme();
+  applySmoothly();
   listeners.forEach((l) => l());
 }
 

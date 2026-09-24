@@ -149,10 +149,12 @@ model GroupMember {
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
+  loginId      String?   @unique // teachers' ID, e.g. "T1001" — they can log in with it instead of the email
   passwordHash String
   name         String
   phone        String?
   role         String    @default("STUDENT") // SUPER_ADMIN | CENTER_ADMIN | TEACHER | STUDENT
+  isOwner      Boolean   @default(false) // the admin who installed this copy: also manages the platform settings
   centerId     String?
   branchId     String?
   onboarded    Boolean   @default(false)

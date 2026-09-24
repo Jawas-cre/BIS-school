@@ -129,7 +129,7 @@ export default async function DashboardPage() {
             const c = comparison.find((x) => x.id === s.id);
             const group = user.memberships.find((m) => m.group.subjectId === s.id)?.group;
             return (
-              <Link key={s.id} href={`/roadmap?subject=${s.id}`} className="group rounded-2xl border border-line bg-surface p-4 shadow-card hover:border-line-strong">
+              <Link key={s.id} href={`/roadmap?subject=${s.id}`} className="pressable-card group rounded-2xl border border-line bg-surface p-4 shadow-card hover:border-line-strong">
                 <div className="flex items-center gap-3">
                   <SubjectIcon icon={s.icon} color={s.color} />
                   <div className="min-w-0 flex-1">

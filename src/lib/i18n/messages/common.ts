@@ -127,6 +127,10 @@ export const nav = defineMessages({
     platformAdmin: "Platform admin",
     codes: "Invite codes",
     account: "My account",
+    teacherPanel: "Teacher panel",
+    platformSettings: "Platform settings",
+    myGroups: "My groups",
+    myStudents: "My students",
   },
   uz: {
     dashboard: "Bosh sahifa",
@@ -155,6 +159,10 @@ export const nav = defineMessages({
     platformAdmin: "Platforma boshqaruvi",
     codes: "Taklif kodlari",
     account: "Mening hisobim",
+    teacherPanel: "Oʻqituvchi paneli",
+    platformSettings: "Platforma sozlamalari",
+    myGroups: "Guruhlarim",
+    myStudents: "Oʻquvchilarim",
   },
 });
 

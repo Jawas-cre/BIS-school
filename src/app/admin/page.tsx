@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, ClipboardCheck, KeyRound, Target, Users } from "lucide-react";
+import { Activity, AlertTriangle, BadgeCheck, ClipboardCheck, KeyRound, Target, Users } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff, staffGroups, staffStudents } from "@/lib/auth";
 import { average, centerStudents } from "@/lib/admin";
 import { PageHeader, StatTile, Avatar } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -13,16 +13,19 @@ import { getI18n, pageTitle } from "@/lib/i18n/server";
 
 export const generateMetadata = pageTitle((t) => t.overview.title);
 
+// Also the teacher panel's home (/teacher): a teacher sees only their own groups and students.
 export default async function AdminOverview({ searchParams }: PageProps<"/admin">) {
   const staff = await requireStaff();
   const { welcome } = await searchParams;
   const { t, date, ago } = await getI18n();
   const O = t.overview;
+  const teacher = staff.role === "TEACHER";
+  const base = panelBase(staff.role);
   const [students, groups, recent] = await Promise.all([
-    centerStudents(staff.centerId),
-    db.group.findMany({ where: { centerId: staff.centerId }, include: { teacher: { select: { name: true } }, branch: { select: { name: true } }, subject: { select: { name: true, color: true } } }, orderBy: { name: "asc" } }),
+    centerStudents(staff.centerId, { teacherId: teacher ? staff.id : undefined }),
+    db.group.findMany({ where: staffGroups(staff), include: { teacher: { select: { name: true } }, branch: { select: { name: true } }, subject: { select: { name: true, color: true } } }, orderBy: { name: "asc" } }),
     db.testAttempt.findMany({
-      where: { status: "COMPLETED", user: { centerId: staff.centerId } },
+      where: { status: "COMPLETED", user: staffStudents(staff) },
       orderBy: { finishedAt: "desc" },
       take: 8,
       include: { user: { select: { id: true, name: true } }, test: { select: { title: true, subject: { select: { name: true } } } } },
@@ -34,7 +37,24 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={center.name} title={welcome ? O.ready : O.heading} subtitle={O.subtitle} />
+      <PageHeader
+        eyebrow={center.name}
+        title={teacher ? (welcome ? fmt(t.teacher.welcome, { name: staff.name.split(" ")[0] }) : t.teacher.heading) : welcome ? O.ready : O.heading}
+        subtitle={teacher ? t.teacher.subtitle : O.subtitle}
+      />
+
+      {teacher && staff.loginId && (
+        <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+          <div className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand">
+            <BadgeCheck className="size-5" />
+          </div>
+          <div className="flex-1">
+            <div className="font-display font-bold">{t.teacher.yourId}</div>
+            <p className="text-sm text-ink-2">{t.teacher.idHint}</p>
+          </div>
+          <span className="self-start rounded-xl border border-line bg-surface-2 px-4 py-2 font-mono text-lg font-bold tracking-[0.2em] sm:self-auto">{staff.loginId}</span>
+        </Card>
+      )}
 
       <Card className="overflow-hidden">
         <div className="flex flex-col gap-4 bg-brand-soft p-5 sm:flex-row sm:items-center">
@@ -43,14 +63,14 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
           </div>
           <div className="flex-1">
             <div className="font-display font-bold">{O.inviteTitle}</div>
-            <p className="text-sm text-ink-2">{rich(O.inviteText, { register: <strong>/register</strong> })}</p>
+            <p className="text-sm text-ink-2">{rich(teacher ? t.teacher.inviteText : O.inviteText, { register: <strong>/register</strong> })}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-xl border border-line bg-surface px-4 py-2 font-mono text-lg font-bold tracking-[0.3em]">{center.inviteCode}</span>
             <CopyButton text={center.inviteCode} label={O.copyCode} />
             <CopyButton text={`/register?code=${center.inviteCode}`} absolute label={O.copyLink} />
             {staff.role === "CENTER_ADMIN" && (
-              <Link href="/admin/codes" className="inline-flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-strong">
+              <Link href="/admin/codes" className="pressable inline-flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-strong">
                 {t.codes.manage}
               </Link>
             )}
@@ -74,7 +94,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
           <CardBody className="space-y-1">
             {attention.length === 0 && <p className="text-sm text-muted">{O.onTrack}</p>}
             {attention.map((s) => (
-              <Link key={s.id} href={`/admin/students/${s.id}`} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-2">
+              <Link key={s.id} href={`${base}/students/${s.id}`} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-2">
                 <Avatar name={s.name} size={30} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{s.name}</span>
@@ -89,7 +109,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader title={O.groups} action={<Link href="/admin/groups" className="text-sm font-semibold text-brand hover:underline">{O.manage}</Link>} />
+          <CardHeader title={teacher ? t.nav.myGroups : O.groups} action={<Link href={`${base}/groups`} className="text-sm font-semibold text-brand hover:underline">{O.manage}</Link>} />
           <CardBody className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -107,7 +127,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
                   return (
                     <tr key={g.id} className="border-b border-line last:border-0">
                       <td className="py-2.5 pr-3">
-                        <Link href={`/admin/groups/${g.id}`} className="font-semibold hover:text-brand">{g.name}</Link>
+                        <Link href={`${base}/groups/${g.id}`} className="font-semibold hover:text-brand">{g.name}</Link>
                         <div className="flex items-center gap-1.5 text-xs text-muted">
                           {g.subject && <span className="size-1.5 rounded-full" style={{ background: g.subject.color }} />}
                           {[g.subject?.name, g.branch?.name, g.schedule].filter(Boolean).join(" · ")}
@@ -121,7 +141,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
                   );
                 })}
                 {groups.length === 0 && (
-                  <tr><td colSpan={5} className="py-6 text-center text-muted">{O.noGroups}</td></tr>
+                  <tr><td colSpan={5} className="py-6 text-center text-muted">{teacher ? t.teacher.noGroups : O.noGroups}</td></tr>
                 )}
               </tbody>
             </table>
@@ -132,7 +152,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
           <CardBody className="space-y-3">
             {recent.length === 0 && <p className="text-sm text-muted">{O.noTests}</p>}
             {recent.map((a) => (
-              <Link key={a.id} href={`/admin/students/${a.user.id}`} className="flex items-center gap-3 rounded-lg hover:bg-surface-2">
+              <Link key={a.id} href={`${base}/students/${a.user.id}`} className="flex items-center gap-3 rounded-lg hover:bg-surface-2">
                 <Avatar name={a.user.name} size={30} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{a.user.name}</span>

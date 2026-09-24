@@ -1,4 +1,4 @@
-import { requireStudentArea, isStaff } from "@/lib/auth";
+import { requireStudentArea, isStaff, panelBase } from "@/lib/auth";
 import { AppShell } from "@/components/shell/app-shell";
 import { STUDENT_NAV } from "@/components/shell/nav";
 import { logout } from "@/app/(auth)/actions";
@@ -6,18 +6,19 @@ import { liveStreak } from "@/lib/activity";
 
 export default async function StudentLayout({ children }: LayoutProps<"/">) {
   const user = await requireStudentArea();
-  const switchLink = isStaff(user.role)
-    ? { href: "/admin", label: "adminPanel" as const }
+  // Students only see the student area; staff and the platform admin get a way back to their panel.
+  const switchLinks = isStaff(user.role)
+    ? [{ href: panelBase(user.role), label: user.role === "TEACHER" ? ("teacherPanel" as const) : ("adminPanel" as const) }]
     : user.role === "SUPER_ADMIN"
-      ? { href: "/platform", label: "platformAdmin" as const }
-      : null;
+      ? [{ href: "/platform", label: "platformAdmin" as const }]
+      : [];
 
   return (
     <AppShell
       area="student"
       nav={STUDENT_NAV}
       accent={user.center?.accent}
-      switchLink={switchLink}
+      switchLinks={switchLinks}
       logoutAction={logout}
       user={{
         name: user.name,

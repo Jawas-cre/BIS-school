@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Lock, Trash2, Unlock, UserMinus } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff, staffGroups } from "@/lib/auth";
 import { average, centerStudents } from "@/lib/admin";
 import { Avatar, StatTile } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -25,7 +25,10 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
   const { id } = await params;
   const t = await getT();
   const G = t.adminGroups;
-  const group = await db.group.findFirst({ where: { id, centerId: staff.centerId }, include: { unlocks: true, subject: true } });
+  // A teacher opens only the groups they teach, and manages members and roadmap access; admins also edit the details.
+  const admin = staff.role === "CENTER_ADMIN";
+  const base = panelBase(staff.role);
+  const group = await db.group.findFirst({ where: { id, ...staffGroups(staff) }, include: { unlocks: true, subject: true, branch: true, teacher: { select: { name: true } } } });
   if (!group) notFound();
   const own = group.subjectId ? await db.roadmapUnit.count({ where: { centerId: staff.centerId, subjectId: group.subjectId } }) : 0;
   const [members, others, units, branches, teachers, progress, subjects] = await Promise.all([
@@ -43,7 +46,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
   return (
     <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/admin/groups" className="hover:text-ink">{t.nav.groups}</Link>
+        <Link href={`${base}/groups`} className="hover:text-ink">{admin ? t.nav.groups : t.nav.myGroups}</Link>
         <ChevronRight className="size-3.5" />
         <span>{group.name}</span>
       </nav>
@@ -55,7 +58,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
             {group.schedule}
           </div>
         </div>
-        {staff.role === "CENTER_ADMIN" && (
+        {admin && (
           <ConfirmAction action={deleteGroup.bind(null, group.id)} label={G.deleteLabel} confirm={G.deleteConfirm}>
             <Trash2 className="size-4" /> {G.deleteLabel}
           </ConfirmAction>
@@ -87,7 +90,7 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
                 {members.map((m) => (
                   <tr key={m.id} className="border-b border-line last:border-0">
                     <td className="py-2 pr-3">
-                      <Link href={`/admin/students/${m.id}`} className="flex items-center gap-2.5 font-semibold hover:text-brand">
+                      <Link href={`${base}/students/${m.id}`} className="flex items-center gap-2.5 font-semibold hover:text-brand">
                         <Avatar name={m.name} size={28} /> {m.name}
                       </Link>
                     </td>
@@ -119,14 +122,31 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
         <Card className="self-start">
           <CardHeader title={G.details} />
           <CardBody>
-            <ActionForm action={updateGroup.bind(null, group.id)}>
-              <GroupFields
-                branches={branches}
-                teachers={teachers}
-                subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
-                defaults={{ name: group.name, subjectId: group.subjectId, branchId: group.branchId, teacherId: group.teacherId, schedule: group.schedule }}
-              />
-            </ActionForm>
+            {admin ? (
+              <ActionForm action={updateGroup.bind(null, group.id)}>
+                <GroupFields
+                  branches={branches}
+                  teachers={teachers}
+                  subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+                  defaults={{ name: group.name, subjectId: group.subjectId, branchId: group.branchId, teacherId: group.teacherId, schedule: group.schedule }}
+                />
+              </ActionForm>
+            ) : (
+              <dl className="space-y-3 text-sm">
+                {[
+                  [G.subject, group.subject?.name],
+                  [G.branch, group.branch?.name],
+                  [G.teacherLabel, group.teacher?.name],
+                  [G.schedule, group.schedule],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
+                    <dt className="text-muted">{label}</dt>
+                    <dd className="text-right font-semibold">{value || "—"}</dd>
+                  </div>
+                ))}
+                <p className="pt-1 text-xs text-muted">{t.teacher.detailsByAdmin}</p>
+              </dl>
+            )}
           </CardBody>
         </Card>
       </div>

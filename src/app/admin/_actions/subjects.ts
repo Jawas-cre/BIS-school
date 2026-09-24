@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { requireCenterAdmin } from "@/lib/auth";
 import { SUBJECT_ICON_KEYS } from "@/components/subject-icon";
 import type { ActionState } from "@/components/action-form";
 import type { Dict } from "@/lib/i18n/dictionaries";
@@ -25,7 +25,7 @@ async function ownSubject(centerId: string, id: string) {
 }
 
 export async function createSubject(_: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   const parsed = subjectInput(t).safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -47,7 +47,7 @@ export async function createSubject(_: ActionState, fd: FormData): Promise<Actio
 }
 
 export async function updateSubject(subjectId: string, _: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   if (!(await ownSubject(staff.centerId, subjectId))) return { error: t.adminSubjects.onlyOwn };
   const parsed = subjectInput(t).omit({ topics: true }).safeParse(Object.fromEntries(fd));
@@ -58,13 +58,13 @@ export async function updateSubject(subjectId: string, _: ActionState, fd: FormD
 }
 
 export async function deleteSubject(subjectId: string) {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   await db.subject.deleteMany({ where: { id: subjectId, centerId: staff.centerId } });
   revalidatePath("/admin/subjects");
 }
 
 export async function addTopic(subjectId: string, _: ActionState, fd: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   const t = await getT();
   if (!(await ownSubject(staff.centerId, subjectId))) return { error: t.adminSubjects.onlyOwn };
   const name = String(fd.get("name") ?? "").trim().slice(0, 60);
@@ -76,7 +76,7 @@ export async function addTopic(subjectId: string, _: ActionState, fd: FormData):
 }
 
 export async function deleteTopic(topicId: string) {
-  const staff = await requireStaff();
+  const staff = await requireCenterAdmin();
   await db.topic.deleteMany({ where: { id: topicId, subject: { centerId: staff.centerId } } });
   revalidatePath("/admin/subjects");
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff } from "@/lib/auth";
 import { preview } from "@/lib/questions";
 import { PageHeader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ export const generateMetadata = pageTitle((t) => t.nav.adminQuestions);
 
 export default async function AdminQuestions({ searchParams }: PageProps<"/admin/questions">) {
   const staff = await requireStaff();
+  const base = panelBase(staff.role);
   const { saved } = await searchParams;
   const t = await getT();
   const Q = t.adminQuestions;
@@ -29,7 +30,7 @@ export default async function AdminQuestions({ searchParams }: PageProps<"/admin
       <PageHeader
         title={t.nav.adminQuestions}
         subtitle={Q.subtitle}
-        action={<ButtonLink href="/admin/questions/new"><Plus className="size-4" /> {Q.newQuestion}</ButtonLink>}
+        action={<ButtonLink href={`${base}/questions/new`}><Plus className="size-4" /> {Q.newQuestion}</ButtonLink>}
       />
       {saved && <p className="rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-success">{Q.saved}</p>}
       <div className="grid gap-3 sm:max-w-md sm:grid-cols-2">
@@ -62,7 +63,7 @@ export default async function AdminQuestions({ searchParams }: PageProps<"/admin
                     {q.type === "SHORT" && <Badge>{t.bank.typedAnswer}</Badge>}
                   </div>
                 </div>
-                <Link href={`/admin/questions/${q.id}`} className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-ink" aria-label={t.common.edit}><Pencil className="size-4" /></Link>
+                <Link href={`${base}/questions/${q.id}`} className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-ink" aria-label={t.common.edit}><Pencil className="size-4" /></Link>
                 <ConfirmAction action={deleteQuestion.bind(null, q.id)} label={Q.deleteLabel} confirm={Q.deleteConfirm}>
                   <Trash2 className="size-4" />
                 </ConfirmAction>

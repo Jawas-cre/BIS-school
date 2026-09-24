@@ -109,6 +109,54 @@ body {
   outline-offset: 2px;
 }
 
+/* ─── Tap feedback ──────────────────────────────────────────────────────────
+   Buttons and button-like links (.pressable) sink slightly while pressed and
+   ease back when released, on phones and with a mouse. Unlayered on purpose:
+   it wraps the Tailwind color transitions so every button animates the same. */
+:where(button, [role="button"], .pressable, .pressable-card) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, translate, scale;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+:where(button, [role="button"], .pressable):not(:disabled, [aria-disabled="true"]):active {
+  scale: 0.97;
+  transition-duration: 90ms;
+}
+/* Big clickable cards move less, so the press doesn't look like a jump. */
+.pressable-card:active {
+  scale: 0.985;
+  transition-duration: 90ms;
+}
+
+/* ─── Smooth light/dark switching ────────────────────────────────────────────
+   Browsers with view transitions cross-fade the whole page (theme-menu.tsx);
+   the others fade the colors of every element for a moment. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+html.theme-fading,
+html.theme-fading *,
+html.theme-fading *::before,
+html.theme-fading *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
+  transition-duration: 0.4s !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], .pressable, .pressable-card):active {
+    scale: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
 /* Scrollbars that respect the theme */
 * {
   scrollbar-width: thin;

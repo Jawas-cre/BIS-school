@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Field, Input, Select } from "@/components/ui/form";
 import { ActionForm, ConfirmAction } from "@/components/action-form";
 import { createStaff, removeStaff } from "../_actions/people";
+import { ensureTeacherId } from "@/lib/teacher-id";
 import Link from "next/link";
 import { fmt } from "@/lib/i18n/format";
 import { getT, pageTitle } from "@/lib/i18n/server";
@@ -17,6 +18,9 @@ export default async function StaffPage() {
   const admin = await requireCenterAdmin();
   const t = await getT();
   const S = t.staff;
+  // Teachers added before teacher IDs existed get theirs the first time an admin opens this page.
+  const withoutId = await db.user.findMany({ where: { centerId: admin.centerId, role: "TEACHER", loginId: null } });
+  for (const teacher of withoutId) await ensureTeacherId(teacher);
   const [staff, branches] = await Promise.all([
     db.user.findMany({
       where: { centerId: admin.centerId, role: { in: ["CENTER_ADMIN", "TEACHER"] } },
@@ -39,8 +43,13 @@ export default async function StaffPage() {
                   <div className="text-xs text-muted">{s.email}{s.branch ? ` · ${s.branch.name}` : ""}</div>
                   {s.teaching.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{s.teaching.map((g) => <Badge key={g.name}>{g.name}</Badge>)}</div>}
                 </div>
-                <Badge tone={s.role === "CENTER_ADMIN" ? "brand" : "neutral"}>{s.role === "CENTER_ADMIN" ? S.admin : S.teacher}</Badge>
-                {s.id !== admin.id && (
+                {s.loginId && (
+                  <span className="rounded-lg border border-line bg-surface-2 px-2 py-0.5 font-mono text-xs font-bold" title={S.teacherId}>
+                    {s.loginId}
+                  </span>
+                )}
+                <Badge tone={s.role === "CENTER_ADMIN" ? "brand" : "neutral"}>{s.isOwner ? S.owner : s.role === "CENTER_ADMIN" ? S.admin : S.teacher}</Badge>
+                {s.id !== admin.id && !s.isOwner && (
                   <ConfirmAction action={removeStaff.bind(null, s.id)} label={t.common.remove} confirm={fmt(S.removeConfirm, { name: s.name })}>
                     <Trash2 className="size-4" />
                   </ConfirmAction>
