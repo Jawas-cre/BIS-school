@@ -1,21 +1,20 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { CenterForm } from "./center-form";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Create your learning center" };
+export const generateMetadata = pageTitle((t) => t.auth.centerTitle);
 
-export default function RegisterCenterPage() {
+export default async function RegisterCenterPage() {
+  const t = await getT();
   return (
     <div className="animate-fade-up">
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">Bring your learning center online</h1>
-      <p className="mt-2 text-muted">
-        Get your own space for every subject you teach — groups, branches, content and analytics. Your students join with an invite code.
-      </p>
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">{t.auth.centerHeading}</h1>
+      <p className="mt-2 text-muted">{t.auth.centerSubtitle}</p>
       <CenterForm />
       <p className="mt-8 text-center text-sm text-muted">
-        Already registered?{" "}
+        {t.auth.alreadyRegistered}{" "}
         <Link href="/login" className="font-semibold text-brand hover:underline">
-          Log in
+          {t.auth.logIn}
         </Link>
       </p>
     </div>

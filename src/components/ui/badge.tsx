@@ -23,9 +23,3 @@ export function Badge({ tone = "neutral", className, ...props }: ComponentProps<
     />
   );
 }
-
-export function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const tone = difficulty === "EASY" ? "success" : difficulty === "MEDIUM" ? "warning" : "danger";
-  const label = difficulty === "EASY" ? "Easy" : difficulty === "MEDIUM" ? "Medium" : "Hard";
-  return <Badge tone={tone}>{label}</Badge>;
-}

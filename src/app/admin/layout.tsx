@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       area="admin"
       nav={nav}
       accent={user.center?.accent}
-      switchLink={{ href: "/dashboard", label: "Student view" }}
+      switchLink={{ href: "/dashboard", label: "studentView" }}
       logoutAction={logout}
       user={{ name: user.name, email: user.email, role: user.role, streak: 0, xp: 0, centerName: user.center?.name ?? null }}
     >

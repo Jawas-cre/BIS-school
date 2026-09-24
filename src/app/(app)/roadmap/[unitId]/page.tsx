@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight, Lock, PlayCircle } from "lucide-react";
@@ -14,12 +13,16 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { UnitQuiz } from "./unit-quiz";
+import { fmt } from "@/lib/i18n/format";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Roadmap unit" };
+export const generateMetadata = pageTitle((t) => t.roadmap.unitTitle);
 
 export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]">) {
   const user = await requireStudentArea();
   const { unitId } = await params;
+  const t = await getT();
+  const R = t.roadmap;
   const target = await db.roadmapUnit.findFirst({ where: { id: unitId, ...visibleTo(user.centerId) }, include: { subject: true } });
   if (!target) notFound();
   const units = await roadmapFor(user, target.subjectId);
@@ -34,10 +37,10 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
       <div className="mx-auto max-w-xl pt-10">
         <EmptyState
           icon={<Lock className="size-5" />}
-          title="This unit is locked"
-          action={<ButtonLink href={`/roadmap?subject=${target.subjectId}`}>Back to roadmap</ButtonLink>}
+          title={R.lockedTitle}
+          action={<ButtonLink href={`/roadmap?subject=${target.subjectId}`}>{R.backToRoadmap}</ButtonLink>}
         >
-          Complete “{prev?.title}” first, or ask your teacher to unlock it for your group.
+          {fmt(R.lockedText, { title: prev?.title ?? "" })}
         </EmptyState>
       </div>
     );
@@ -59,16 +62,16 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
     <div className="mx-auto max-w-4xl">
       <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted">
         <Link href={`/roadmap?subject=${target.subjectId}`} className="hover:text-ink">
-          Roadmap · {target.subject.name}
+          {fmt(R.breadcrumb, { subject: target.subject.name })}
         </Link>
         <ChevronRight className="size-3.5" />
-        <span>Unit {index + 1}</span>
+        <span>{fmt(R.unitN, { n: index + 1 })}</span>
       </nav>
 
       <div className="flex flex-wrap items-center gap-2">
         <SubjectBadge name={target.subject.name} color={target.subject.color} />
         {unit.topic && <Badge>{unit.topic.name}</Badge>}
-        {unit.completed && <Badge tone="success">Completed{unit.quizScore !== null ? ` · ${unit.quizScore}%` : ""}</Badge>}
+        {unit.completed && <Badge tone="success">{R.completed}{unit.quizScore !== null ? ` · ${unit.quizScore}%` : ""}</Badge>}
       </div>
       <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">{unit.title}</h1>
       <p className="mt-1 text-[15px] text-muted">{unit.summary}</p>
@@ -86,7 +89,7 @@ export default async function UnitPage({ params }: PageProps<"/roadmap/[unitId]"
           </div>
         ) : (
           <div className="flex items-center gap-3 border-b border-line bg-surface-2 px-5 py-4 text-sm text-muted">
-            <PlayCircle className="size-5" /> Your teacher hasn&apos;t added a video lesson for this unit yet — the notes below cover everything.
+            <PlayCircle className="size-5" /> {R.noVideo}
           </div>
         )}
         <div className="p-5 sm:p-8">

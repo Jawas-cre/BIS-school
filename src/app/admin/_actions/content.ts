@@ -6,6 +6,9 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireStaff, visibleTo } from "@/lib/auth";
 import type { ActionState } from "@/components/action-form";
+import type { Dict } from "@/lib/i18n/dictionaries";
+import { fmt, plural } from "@/lib/i18n/format";
+import { getT } from "@/lib/i18n/server";
 
 /** A topic the center may use: from a platform subject or one of its own subjects. */
 async function usableTopic(centerId: string, topicId: string | undefined | null) {
@@ -25,31 +28,33 @@ const webUrl = (message: string) => z.string().trim().url(message).refine((u) =>
 
 export async function saveQuestion(questionId: string | null, _: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const t = await getT();
+  const Q = t.adminQuestions;
   const parsed = z
     .object({
-      topicId: z.string().min(1, "Choose a topic"),
+      topicId: z.string().min(1, Q.errChooseTopic),
       difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
       type: z.enum(["MCQ", "SHORT"]),
       passage: z.string().max(4000).optional(),
-      stem: z.string().trim().min(3, "Write the question").max(2000),
+      stem: z.string().trim().min(3, Q.errStem).max(2000),
       choiceA: z.string().max(500).optional(),
       choiceB: z.string().max(500).optional(),
       choiceC: z.string().max(500).optional(),
       choiceD: z.string().max(500).optional(),
-      answer: z.string().trim().min(1, "Enter the correct answer").max(120),
-      explanation: z.string().trim().min(3, "Add an explanation").max(4000),
+      answer: z.string().trim().min(1, Q.errAnswer).max(120),
+      explanation: z.string().trim().min(3, Q.errExplanation).max(4000),
     })
     .safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   const topic = await usableTopic(staff.centerId, d.topicId);
-  if (!topic) return { error: "Choose a topic" };
+  if (!topic) return { error: Q.errChooseTopic };
   const choices = [d.choiceA, d.choiceB, d.choiceC, d.choiceD].map((c) => (c ?? "").trim());
   let answer = d.answer;
   if (d.type === "MCQ") {
-    if (choices.some((c) => !c)) return { error: "Fill in all four answer choices" };
+    if (choices.some((c) => !c)) return { error: Q.errChoices };
     answer = d.answer.toUpperCase();
-    if (!["A", "B", "C", "D"].includes(answer)) return { error: "The answer must be A, B, C or D" };
+    if (!["A", "B", "C", "D"].includes(answer)) return { error: Q.errLetter };
   }
   const data = {
     subjectId: topic.subjectId,
@@ -64,7 +69,7 @@ export async function saveQuestion(questionId: string | null, _: ActionState, fd
   };
   if (questionId) {
     const existing = await db.question.findFirst({ where: { id: questionId, centerId: staff.centerId } });
-    if (!existing) return { error: "Only your center's questions can be edited" };
+    if (!existing) return { error: Q.errOwn };
     await db.question.update({ where: { id: questionId }, data });
   } else {
     await db.question.create({ data: { ...data, centerId: staff.centerId } });
@@ -83,11 +88,13 @@ export async function deleteQuestion(questionId: string) {
 
 export async function createTestFromBank(_: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const t = await getT();
+  const T = t.adminTests;
   const parsed = z
     .object({
-      title: z.string().trim().min(3, "Give the test a title").max(80),
+      title: z.string().trim().min(3, T.errTitle).max(80),
       description: z.string().trim().max(300).optional(),
-      subjectId: z.string().min(1, "Choose a subject"),
+      subjectId: z.string().min(1, T.errSubject),
       topicId: z.string().optional(),
       difficulty: z.enum(["ANY", "EASY", "MEDIUM", "HARD"]),
       count: z.coerce.number().int().min(3).max(60),
@@ -98,7 +105,7 @@ export async function createTestFromBank(_: ActionState, fd: FormData): Promise<
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   const subject = await usableSubject(staff.centerId, d.subjectId);
-  if (!subject) return { error: "Choose a subject" };
+  if (!subject) return { error: T.errSubject };
   const topic = d.topicId ? await db.topic.findFirst({ where: { id: d.topicId, subjectId: subject.id } }) : null;
   const pool = await db.question.findMany({
     where: {
@@ -111,7 +118,7 @@ export async function createTestFromBank(_: ActionState, fd: FormData): Promise<
     },
     select: { id: true, difficulty: true },
   });
-  if (pool.length < d.count) return { error: `Only ${pool.length} questions match — lower the count or widen the filters.` };
+  if (pool.length < d.count) return { error: fmt(T.errPool, { n: pool.length }) };
   const rank = { EASY: 0, MEDIUM: 1, HARD: 2 } as Record<string, number>;
   const picked = pool
     .map((q) => ({ q, r: Math.random() }))
@@ -138,7 +145,7 @@ export async function createTestFromBank(_: ActionState, fd: FormData): Promise<
     },
   });
   revalidatePath("/admin/tests");
-  return { ok: `“${d.title}” created with ${d.count} questions and published to your students.` };
+  return { ok: fmt(T.created, { title: d.title, questions: plural(t.common.questions, d.count) }) };
 }
 
 export async function toggleTestPublished(testId: string) {
@@ -177,24 +184,25 @@ export async function resetRoadmap(subjectId: string) {
 
 export async function saveUnit(unitId: string | null, subjectId: string, _: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const R = (await getT()).adminRoadmap;
   const parsed = z
     .object({
-      title: z.string().trim().min(2, "Enter a title").max(80),
+      title: z.string().trim().min(2, R.errTitle).max(80),
       topicId: z.string().optional(),
-      summary: z.string().trim().min(2, "Add a one-line summary").max(200),
-      videoUrl: z.union([z.literal(""), webUrl("Enter a valid video link")]).optional(),
+      summary: z.string().trim().min(2, R.errSummary).max(200),
+      videoUrl: z.union([z.literal(""), webUrl(R.errVideo)]).optional(),
       notes: z.string().max(20000).optional(),
     })
     .safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   const subject = await usableSubject(staff.centerId, subjectId);
-  if (!subject) return { error: "Subject not found" };
+  if (!subject) return { error: R.errSubject };
   const topic = d.topicId ? await db.topic.findFirst({ where: { id: d.topicId, subjectId } }) : null;
   const data = { title: d.title, summary: d.summary, topicId: topic?.id ?? null, videoUrl: d.videoUrl || null, notes: d.notes ?? "" };
   if (unitId) {
     const unit = await db.roadmapUnit.findFirst({ where: { id: unitId, centerId: staff.centerId } });
-    if (!unit) return { error: "Customize the roadmap before editing units" };
+    if (!unit) return { error: R.errCustomize };
     await db.roadmapUnit.update({ where: { id: unitId }, data });
   } else {
     const last = await db.roadmapUnit.findFirst({ where: { centerId: staff.centerId, subjectId }, orderBy: { order: "desc" } });
@@ -228,11 +236,11 @@ export async function deleteUnit(unitId: string) {
 // ─── Vocabulary ─────────────────────────────────────────────────────────────
 
 /** One word per line: word | part of speech | definition | example | synonyms */
-function parseWords(raw: string) {
+function parseWords(raw: string, t: Dict) {
   const words = [];
   for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
     const [word, pos, definition, example, synonyms] = line.split("|").map((s) => s?.trim() ?? "");
-    if (!word || !definition) return { error: `Line “${line.slice(0, 40)}” needs at least a word and a definition` } as const;
+    if (!word || !definition) return { error: fmt(t.adminVocab.errLine, { line: line.slice(0, 40) }) } as const;
     words.push({ word, pos: pos || "term", definition, example: example || "", synonyms: synonyms || "" });
   }
   return { words } as const;
@@ -240,9 +248,10 @@ function parseWords(raw: string) {
 
 export async function createDeck(_: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const t = await getT();
   const title = String(fd.get("title") ?? "").trim();
-  if (title.length < 2) return { error: "Give the deck a title" };
-  const parsed = parseWords(String(fd.get("words") ?? ""));
+  if (title.length < 2) return { error: t.adminVocab.errTitle };
+  const parsed = parseWords(String(fd.get("words") ?? ""), t);
   if ("error" in parsed) return { error: parsed.error };
   await db.vocabDeck.create({
     data: {
@@ -255,18 +264,19 @@ export async function createDeck(_: ActionState, fd: FormData): Promise<ActionSt
     },
   });
   revalidatePath("/admin/vocabulary");
-  return { ok: `Deck created with ${parsed.words.length} words` };
+  return { ok: fmt(t.adminVocab.created, { words: plural(t.common.words, parsed.words.length) }) };
 }
 
 export async function addWords(deckId: string, _: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
-  if (!(await db.vocabDeck.findFirst({ where: { id: deckId, centerId: staff.centerId } }))) return { error: "Deck not found" };
-  const parsed = parseWords(String(fd.get("words") ?? ""));
+  const t = await getT();
+  if (!(await db.vocabDeck.findFirst({ where: { id: deckId, centerId: staff.centerId } }))) return { error: t.adminVocab.notFound };
+  const parsed = parseWords(String(fd.get("words") ?? ""), t);
   if ("error" in parsed) return { error: parsed.error };
-  if (!parsed.words.length) return { error: "Add at least one word" };
+  if (!parsed.words.length) return { error: t.adminVocab.errOneWord };
   await db.vocabWord.createMany({ data: parsed.words.map((w) => ({ ...w, deckId })) });
   revalidatePath("/admin/vocabulary");
-  return { ok: `${parsed.words.length} words added` };
+  return { ok: fmt(t.adminVocab.added, { words: plural(t.common.words, parsed.words.length) }) };
 }
 
 export async function deleteDeck(deckId: string) {
@@ -279,13 +289,14 @@ export async function deleteDeck(deckId: string) {
 
 export async function createLibraryItem(_: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const L = (await getT()).adminLibrary;
   const parsed = z
     .object({
-      title: z.string().trim().min(2, "Enter a title").max(120),
+      title: z.string().trim().min(2, L.errTitle).max(120),
       author: z.string().trim().max(80).optional(),
       description: z.string().trim().max(400).optional(),
       category: z.enum(["PRACTICE", "BOOK", "GUIDE", "VIDEO"]),
-      url: webUrl("Enter a valid link (https://…)"),
+      url: webUrl(L.errLink),
       pages: z.union([z.literal(""), z.coerce.number().int().min(1).max(5000)]).optional(),
       subjectId: z.string().optional(),
     })
@@ -297,7 +308,7 @@ export async function createLibraryItem(_: ActionState, fd: FormData): Promise<A
     data: { centerId: staff.centerId, subjectId: subject?.id ?? null, title: d.title, author: d.author || null, description: d.description || null, category: d.category, url: d.url, pages: typeof d.pages === "number" ? d.pages : null },
   });
   revalidatePath("/admin/library");
-  return { ok: "Added to your library" };
+  return { ok: L.added };
 }
 
 export async function deleteLibraryItem(itemId: string) {
@@ -310,10 +321,11 @@ export async function deleteLibraryItem(itemId: string) {
 
 export async function createNews(_: ActionState, fd: FormData): Promise<ActionState> {
   const staff = await requireStaff();
+  const N = (await getT()).adminNews;
   const parsed = z
     .object({
-      title: z.string().trim().min(3, "Enter a title").max(120),
-      body: z.string().trim().min(3, "Write the announcement").max(5000),
+      title: z.string().trim().min(3, N.errTitle).max(120),
+      body: z.string().trim().min(3, N.errBody).max(5000),
       tag: z.enum(["Announcement", "Event", "Update", "Tip"]),
       pinned: z.string().optional(),
     })
@@ -323,7 +335,7 @@ export async function createNews(_: ActionState, fd: FormData): Promise<ActionSt
   await db.newsPost.create({ data: { centerId: staff.centerId, authorId: staff.id, title: d.title, body: d.body, tag: d.tag, pinned: Boolean(d.pinned) } });
   revalidatePath("/admin/news");
   revalidatePath("/news");
-  return { ok: "Published to your students" };
+  return { ok: N.published };
 }
 
 export async function togglePin(postId: string) {

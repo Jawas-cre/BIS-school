@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Check, ChevronRight, Clock, Minus, RotateCcw, Sparkles, X } from "lucide-react";
@@ -6,20 +5,25 @@ import { requireStudentArea } from "@/lib/auth";
 import { loadAttempt, parseJson, sectionResults } from "@/lib/tests";
 import { isCorrect, parseChoices } from "@/lib/quiz";
 import { SubjectBadge } from "@/components/subject-icon";
-import { cn, formatDate, pct } from "@/lib/utils";
+import { cn, pct } from "@/lib/utils";
+import { fmt, rich } from "@/lib/i18n/format";
+import { getI18n, pageTitle } from "@/lib/i18n/server";
 import { Markdown } from "@/components/markdown";
-import { Badge, DifficultyBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { DifficultyBadge } from "@/components/ui/difficulty-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Progress } from "@/components/ui/misc";
 import { startTest } from "@/app/(app)/tests/actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export const metadata: Metadata = { title: "Score report" };
+export const generateMetadata = pageTitle((t) => t.results.title);
 
 export default async function ResultsPage({ params, searchParams }: PageProps<"/tests/attempt/[attemptId]/results">) {
   const user = await requireStudentArea();
   const { attemptId } = await params;
   const { show } = await searchParams;
+  const { t, date } = await getI18n();
+  const R = t.results;
   const attempt = await loadAttempt(attemptId, user.id);
   if (!attempt) notFound();
   if (attempt.status !== "COMPLETED") redirect(`/tests/attempt/${attempt.id}`);
@@ -36,7 +40,7 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
   // Breakdown by topic, in the order topics first appear in the test.
   const topics: { id: string; name: string; subject: string; total: number; correct: number }[] = [];
   for (const it of items) {
-    let row = topics.find((t) => t.id === it.q.topicId);
+    let row = topics.find((x) => x.id === it.q.topicId);
     if (!row) {
       row = { id: it.q.topicId, name: it.q.topic.name, subject: it.q.subject.name, total: 0, correct: 0 };
       topics.push(row);
@@ -45,7 +49,7 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
     if (it.correct) row.correct++;
   }
   const sections = sectionResults(attempt);
-  const mixed = new Set(topics.map((t) => t.subject)).size > 1;
+  const mixed = new Set(topics.map((x) => x.subject)).size > 1;
 
   const filter = show === "incorrect" || show === "omitted" || show === "flagged" ? show : "all";
   const visible = items.filter((it) =>
@@ -56,9 +60,9 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
   return (
     <div className="mx-auto max-w-5xl">
       <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/tests" className="hover:text-ink">Mock Tests</Link>
+        <Link href="/tests" className="hover:text-ink">{t.nav.tests}</Link>
         <ChevronRight className="size-3.5" />
-        <span>Score report</span>
+        <span>{R.title}</span>
       </nav>
 
       <section className="overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
@@ -69,14 +73,14 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
               <span className="text-sm font-semibold text-muted">{attempt.test.title}</span>
             </div>
             <div className="mt-1 text-xs text-muted">
-              Completed {formatDate(attempt.finishedAt!, { hour: "numeric", minute: "2-digit" })}
-              {minutes !== null && <> · <Clock className="inline size-3" /> {minutes} min</>}
+              {fmt(R.completed, { date: date(attempt.finishedAt!, { hour: "numeric", minute: "2-digit" }) })}
+              {minutes !== null && <> · <Clock className="inline size-3" /> {fmt(t.tests.minutesShort, { n: minutes })}</>}
             </div>
-            <div className="mt-5 text-sm font-semibold text-ink-2">Score</div>
+            <div className="mt-5 text-sm font-semibold text-ink-2">{t.charts.colScore}</div>
             <div className="font-display text-6xl font-extrabold tracking-tight">{attempt.score}%</div>
-            <div className="mt-1 text-sm text-muted">{attempt.correct} of {attempt.total} correct</div>
+            <div className="mt-1 text-sm text-muted">{fmt(R.correctOf, { correct: attempt.correct ?? 0, total: attempt.total ?? 0 })}</div>
             <p className="mt-4 text-sm text-ink-2">
-              {(attempt.score ?? 0) >= 85 ? "Excellent work — keep it up!" : (attempt.score ?? 0) >= 65 ? "Good result. Review your mistakes below to push higher." : "Keep practising: review the explanations below, then retake the test."}
+              {(attempt.score ?? 0) >= 85 ? R.excellent : (attempt.score ?? 0) >= 65 ? R.good : R.keepPractising}
             </p>
           </div>
           <div className="space-y-3">
@@ -88,23 +92,23 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
                     <span className="font-display text-2xl font-extrabold">{sec.percent}%</span>
                   </div>
                   <Progress value={sec.percent} className="mt-2" />
-                  <div className="mt-1 text-xs text-muted">{sec.correct}/{sec.total} correct</div>
+                  <div className="mt-1 text-xs text-muted">{fmt(R.sectionCorrect, { correct: sec.correct, total: sec.total })}</div>
                 </div>
               ))}
             <div className="flex flex-wrap gap-2 pt-1">
               <form action={startTest.bind(null, attempt.testId)}>
-                <SubmitButton variant="outline" size="sm" pendingText="Starting…">
-                  <RotateCcw className="size-4" /> Retake
+                <SubmitButton variant="outline" size="sm" pendingText={R.starting}>
+                  <RotateCcw className="size-4" /> {R.retake}
                 </SubmitButton>
               </form>
-              <ButtonLink href="/tests" variant="ghost" size="sm">All tests</ButtonLink>
+              <ButtonLink href="/tests" variant="ghost" size="sm">{R.allTests}</ButtonLink>
             </div>
           </div>
         </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6">
-        <h2 className="font-display text-lg font-bold">Results by topic</h2>
+        <h2 className="font-display text-lg font-bold">{R.byTopic}</h2>
         <div className="mt-4 grid gap-x-10 gap-y-4 md:grid-cols-2">
           {topics.map((d) => {
             const p = pct(d.correct, d.total);
@@ -125,22 +129,22 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
 
       <section className="mt-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-bold">Review questions</h2>
+          <h2 className="font-display text-lg font-bold">{R.reviewQuestions}</h2>
           <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
             {(["all", "incorrect", "omitted", "flagged"] as const).map((f) => (
               <Link
                 key={f}
                 href={`?show=${f}`}
                 scroll={false}
-                className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}
+                className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", filter === f ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}
               >
-                {f}
+                {R.filters[f]}
               </Link>
             ))}
           </div>
         </div>
         <div className="space-y-2">
-          {visible.length === 0 && <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nothing to show here.</p>}
+          {visible.length === 0 && <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">{R.nothing}</p>}
           {visible.map((it) => {
             const choices = parseChoices(it.q.choices);
             const key = it.q.answer.split("|")[0];
@@ -156,12 +160,12 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
                     {it.omitted ? <Minus className="size-3.5" /> : it.correct ? <Check className="size-3.5" /> : <X className="size-3.5" />}
                   </span>
                   <span className="w-24 shrink-0 text-xs text-muted sm:w-36">
-                    {it.module} · Q{it.number}
+                    {it.module} · {fmt(R.qNumber, { n: it.number })}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{it.q.topic.name}</span>
                   <DifficultyBadge difficulty={it.q.difficulty} />
                   <span className="hidden w-24 text-right text-xs text-muted sm:block">
-                    {it.omitted ? "Omitted" : `You: ${it.response}`} · Key: {key}
+                    {it.omitted ? R.omitted : fmt(R.you, { answer: it.response })} · {fmt(R.key, { answer: key })}
                   </span>
                   <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" />
                 </summary>
@@ -189,20 +193,20 @@ export default async function ResultsPage({ params, searchParams }: PageProps<"/
                   )}
                   {it.q.type === "SHORT" && (
                     <p className="mt-3 text-sm">
-                      Your answer: <strong>{it.response || "—"}</strong> · Correct answer: <strong>{key}</strong>
+                      {rich(R.answerLine, { yours: <strong>{it.response || "—"}</strong>, key: <strong>{key}</strong> })}
                     </p>
                   )}
                   <div className="mt-4 rounded-xl bg-surface-2 p-4">
-                    <div className="mb-1 text-xs font-bold tracking-wider text-muted uppercase">Explanation</div>
+                    <div className="mb-1 text-xs font-bold tracking-wider text-muted uppercase">{t.question.explanation}</div>
                     <Markdown className="text-[15px]">{it.q.explanation}</Markdown>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                     <Badge>{it.q.topic.name}</Badge>
-                    <Link href={`/assistant?q=${encodeURIComponent(`Explain this ${it.q.subject.name} question step by step:\n\n${it.q.passage ? `${it.q.passage}\n\n` : ""}${it.q.stem}`.slice(0, 1500))}`} className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">
-                      <Sparkles className="size-4" /> Ask AI
+                    <Link href={`/assistant?q=${encodeURIComponent(`${fmt(R.explainAsk, { subject: it.q.subject.name })}\n\n${it.q.passage ? `${it.q.passage}\n\n` : ""}${it.q.stem}`.slice(0, 1500))}`} className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">
+                      <Sparkles className="size-4" /> {R.askAi}
                     </Link>
                     <Link href={`/questions/${it.q.id}`} className="font-semibold text-ink-2 hover:text-ink">
-                      Practice again
+                      {R.practiceAgain}
                     </Link>
                   </div>
                 </div>

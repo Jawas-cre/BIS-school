@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { BarChart3, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 /** Card with a chart/table toggle so every value is reachable without hovering. */
 export function ChartCard({
@@ -23,6 +24,7 @@ export function ChartCard({
   action?: ReactNode;
 }) {
   const [view, setView] = useState<"chart" | "table">("chart");
+  const t = useT();
   return (
     <section className={cn("rounded-2xl border border-line bg-surface shadow-card", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
@@ -32,7 +34,7 @@ export function ChartCard({
         </div>
         <div className="flex items-center gap-2">
           {action}
-          <div className="flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label="View">
+          <div className="flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label={t.shell.viewAs}>
             {(["chart", "table"] as const).map((v) => (
               <button
                 key={v}
@@ -40,12 +42,12 @@ export function ChartCard({
                 onClick={() => setView(v)}
                 aria-pressed={view === v}
                 className={cn(
-                  "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold capitalize transition-colors",
+                  "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors",
                   view === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink",
                 )}
               >
                 {v === "chart" ? <BarChart3 className="size-3.5" /> : <Table2 className="size-3.5" />}
-                {v}
+                {t.shell[v]}
               </button>
             ))}
           </div>

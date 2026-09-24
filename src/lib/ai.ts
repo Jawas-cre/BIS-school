@@ -39,6 +39,7 @@ export function studentContext(user: {
   avgTestScore: number | null;
   weakest: string[];
   centerName: string | null;
+  locale: string;
 }) {
   const lines = [
     `Student: ${user.name.split(" ")[0]}`,
@@ -49,6 +50,7 @@ export function studentContext(user: {
     user.examDate && `Upcoming exam date: ${user.examDate.toISOString().slice(0, 10)}`,
     user.avgTestScore !== null && `Average mock test score: ${user.avgTestScore}%`,
     user.weakest.length > 0 && `Weakest topics by practice accuracy: ${user.weakest.join(", ")}`,
+    user.locale === "uz" && "The student uses the platform in Uzbek: reply in Uzbek (Latin script) unless they write to you in another language.",
   ].filter(Boolean);
   return `Context about the student you are helping (use it to personalise advice; don't recite it back):\n${lines.join("\n")}`;
 }

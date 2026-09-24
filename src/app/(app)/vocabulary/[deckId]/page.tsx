@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -6,12 +5,16 @@ import { db } from "@/lib/db";
 import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Flashcards } from "./flashcards";
+import { fmt } from "@/lib/i18n/format";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Flashcards" };
+export const generateMetadata = pageTitle((t) => t.vocab.flashcardsTitle);
 
 export default async function DeckPage({ params }: PageProps<"/vocabulary/[deckId]">) {
   const user = await requireStudentArea();
   const { deckId } = await params;
+  const t = await getT();
+  const V = t.vocab;
   const deck = await db.vocabDeck.findFirst({ where: { id: deckId, ...visibleTo(user.centerId) }, include: { words: { orderBy: { word: "asc" } } } });
   if (!deck) notFound();
   const progress = await db.userWord.findMany({ where: { userId: user.id, wordId: { in: deck.words.map((w) => w.id) } } });
@@ -30,7 +33,7 @@ export default async function DeckPage({ params }: PageProps<"/vocabulary/[deckI
   return (
     <div className="mx-auto max-w-4xl">
       <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/vocabulary" className="hover:text-ink">Vocabulary</Link>
+        <Link href="/vocabulary" className="hover:text-ink">{t.nav.vocabulary}</Link>
         <ChevronRight className="size-3.5" />
         <span>{deck.title}</span>
       </nav>
@@ -44,12 +47,12 @@ export default async function DeckPage({ params }: PageProps<"/vocabulary/[deckI
         />
       </div>
 
-      <h2 className="mt-10 mb-3 font-display text-lg font-bold">All words ({deck.words.length})</h2>
+      <h2 className="mt-10 mb-3 font-display text-lg font-bold">{fmt(V.allWords, { n: deck.words.length })}</h2>
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         <ul className="divide-y divide-line">
           {deck.words.map((w) => {
             const p = byWord.get(w.id);
-            const status = !p ? ["New", "neutral"] : p.box >= 4 ? ["Mastered", "success"] : ["Learning", "warning"];
+            const status = !p ? [V.statusNew, "neutral"] : p.box >= 4 ? [V.statusMastered, "success"] : [V.statusLearning, "warning"];
             return (
               <li key={w.id} className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="w-40 shrink-0">

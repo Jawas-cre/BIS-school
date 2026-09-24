@@ -7,9 +7,9 @@ import { liveStreak } from "@/lib/activity";
 export default async function StudentLayout({ children }: LayoutProps<"/">) {
   const user = await requireStudentArea();
   const switchLink = isStaff(user.role)
-    ? { href: "/admin", label: "Admin panel" }
+    ? { href: "/admin", label: "adminPanel" as const }
     : user.role === "SUPER_ADMIN"
-      ? { href: "/platform", label: "Platform admin" }
+      ? { href: "/platform", label: "platformAdmin" as const }
       : null;
 
   return (

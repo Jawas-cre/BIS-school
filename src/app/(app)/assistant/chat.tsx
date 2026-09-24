@@ -5,18 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Sparkles, Square } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 type Message = { id: string; role: "user" | "assistant"; content: string };
 
-const SUGGESTIONS = [
-  "Explain Newton's second law with an everyday example",
-  "Give me 3 quadratic equation problems, one at a time",
-  "When do I use a semicolon instead of a comma?",
-  "Make a 4-week revision plan for my exams",
-];
-
 export function Chat({ conversationId: initialId, initialMessages, initialDraft }: { conversationId: string | null; initialMessages: Message[]; initialDraft: string }) {
   const router = useRouter();
+  const t = useT();
+  const A = t.assistant;
   const [conversationId, setConversationId] = useState(initialId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState(initialDraft);
@@ -49,7 +45,7 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
-        append(`_${data.error ?? "Something went wrong. Please try again."}_`);
+        append(`_${data.error ?? t.common.somethingWrong}_`);
         return;
       }
       const id = res.headers.get("X-Conversation-Id");
@@ -65,7 +61,7 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
         append(decoder.decode(value, { stream: true }));
       }
     } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) append("\n\n_Connection lost. Please try again._");
+      if (!(e instanceof DOMException && e.name === "AbortError")) append(`\n\n_${A.connectionLost}_`);
     } finally {
       setStreaming(false);
       abort.current = null;
@@ -82,12 +78,10 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
             <div className="grid size-14 place-items-center rounded-2xl bg-brand text-white shadow-card">
               <Sparkles className="size-7" />
             </div>
-            <h1 className="mt-4 font-display text-2xl font-extrabold">Your tutor, any time</h1>
-            <p className="mt-2 max-w-md text-muted">
-              Ask about any subject, problem or topic. The assistant knows your subjects, goal and weak spots, and explains step by step.
-            </p>
+            <h1 className="mt-4 font-display text-2xl font-extrabold">{A.heroTitle}</h1>
+            <p className="mt-2 max-w-md text-muted">{A.heroText}</p>
             <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
+              {A.suggestions.map((s) => (
                 <button key={s} onClick={() => send(s)} className="rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink-2 shadow-card hover:border-line-strong hover:text-ink">
                   {s}
                 </button>
@@ -110,7 +104,7 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
                     {m.content ? (
                       <Markdown className="text-[15px] text-ink">{m.content}</Markdown>
                     ) : (
-                      <div className="flex gap-1 pt-2" aria-label="Thinking">
+                      <div className="flex gap-1 pt-2" aria-label={A.thinking}>
                         {[0, 1, 2].map((i) => (
                           <span key={i} className="size-2 rounded-full bg-muted" style={{ animation: `pulse-dot 1.2s ${i * 0.2}s infinite` }} />
                         ))}
@@ -144,21 +138,21 @@ export function Chat({ conversationId: initialId, initialMessages, initialDraft 
               }
             }}
             rows={Math.min(8, Math.max(1, draft.split("\n").length))}
-            placeholder="Ask about any subject, a problem, or your study plan…"
+            placeholder={A.placeholder}
             className="max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-ink outline-none placeholder:text-muted"
             maxLength={4000}
           />
           {streaming ? (
-            <button type="button" onClick={() => abort.current?.abort()} aria-label="Stop" className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-surface">
+            <button type="button" onClick={() => abort.current?.abort()} aria-label={A.stop} className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-surface">
               <Square className="size-4 fill-current" />
             </button>
           ) : (
-            <button type="submit" disabled={!draft.trim()} aria-label="Send" className={cn("grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-white disabled:opacity-40")}>
+            <button type="submit" disabled={!draft.trim()} aria-label={A.send} className={cn("grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-white disabled:opacity-40")}>
               <ArrowUp className="size-5" />
             </button>
           )}
         </form>
-        <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-muted">Enter to send · Shift+Enter for a new line</p>
+        <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-muted">{A.enterHint}</p>
       </div>
     </div>
   );

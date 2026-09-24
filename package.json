@@ -2,10 +2,14 @@
   "name": "bis-learn",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "setup": "node scripts/setup.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",

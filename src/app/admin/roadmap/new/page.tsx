@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
@@ -6,8 +5,9 @@ import { visibleSubjects } from "@/lib/subjects";
 import { PageHeader } from "@/components/ui/misc";
 import { UnitForm } from "../unit-form";
 import { saveUnit } from "../../_actions/content";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "New unit" };
+export const generateMetadata = pageTitle((t) => t.adminRoadmap.newUnit);
 
 export default async function NewUnit({ searchParams }: PageProps<"/admin/roadmap/new">) {
   const staff = await requireStaff();
@@ -16,10 +16,11 @@ export default async function NewUnit({ searchParams }: PageProps<"/admin/roadma
   if (!subject) redirect("/admin/roadmap");
   const customized = subject.centerId === staff.centerId || (await db.roadmapUnit.count({ where: { centerId: staff.centerId, subjectId: subject.id } })) > 0;
   if (!customized) redirect(`/admin/roadmap?subject=${subject.id}`);
+  const t = await getT();
   return (
     <div>
-      <PageHeader eyebrow={subject.name} title="New roadmap unit" />
-      <UnitForm action={saveUnit.bind(null, null, subject.id)} topics={subject.topics} />
+      <PageHeader eyebrow={subject.name} title={t.adminRoadmap.newUnitTitle} />
+      <UnitForm action={saveUnit.bind(null, null, subject.id)} topics={subject.topics.map((x) => ({ id: x.id, name: x.name }))} />
     </div>
   );
 }

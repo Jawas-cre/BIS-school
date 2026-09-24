@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Layers, Users } from "lucide-react";
 import { db } from "@/lib/db";
@@ -10,11 +9,15 @@ import { ActionForm } from "@/components/action-form";
 import { createGroup } from "../_actions/people";
 import { visibleSubjects } from "@/lib/subjects";
 import { SubjectIcon } from "@/components/subject-icon";
+import { rich } from "@/lib/i18n/format";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Groups" };
+export const generateMetadata = pageTitle((t) => t.nav.groups);
 
 export default async function GroupsPage() {
   const staff = await requireStaff();
+  const t = await getT();
+  const G = t.adminGroups;
   const [groups, branches, teachers] = await Promise.all([
     db.group.findMany({
       where: { centerId: staff.centerId },
@@ -28,7 +31,7 @@ export default async function GroupsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Groups" subtitle="Each group studies one subject with a teacher and schedule. Students can be in several groups. Teachers can unlock roadmap units for a whole group." />
+      <PageHeader title={t.nav.groups} subtitle={G.subtitle} />
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-4 md:grid-cols-2">
           {groups.map((g) => (
@@ -38,17 +41,17 @@ export default async function GroupsPage() {
                 <span className="flex items-center gap-1 text-sm font-semibold text-ink-2"><Users className="size-4" /> {g._count.members}</span>
               </div>
               <h3 className="mt-3 font-display text-lg font-bold group-hover:text-brand">{g.name}</h3>
-              <p className="mt-0.5 text-sm text-muted">{[g.subject?.name, g.branch?.name, g.schedule].filter(Boolean).join(" · ") || "No schedule set"}</p>
-              <p className="mt-3 text-sm text-ink-2">Teacher: <strong>{g.teacher?.name ?? "not assigned"}</strong></p>
+              <p className="mt-0.5 text-sm text-muted">{[g.subject?.name, g.branch?.name, g.schedule].filter(Boolean).join(" · ") || G.noSchedule}</p>
+              <p className="mt-3 text-sm text-ink-2">{rich(G.teacher, { name: <strong>{g.teacher?.name ?? G.notAssigned}</strong> })}</p>
             </Link>
           ))}
-          {groups.length === 0 && <p className="rounded-2xl border border-dashed border-line-strong p-10 text-center text-muted md:col-span-2">No groups yet. Create your first one →</p>}
+          {groups.length === 0 && <p className="rounded-2xl border border-dashed border-line-strong p-10 text-center text-muted md:col-span-2">{G.empty}</p>}
         </div>
         <Card className="self-start">
-          <CardHeader title="New group" />
+          <CardHeader title={G.newGroup} />
           <CardBody>
-            <ActionForm action={createGroup} submitLabel="Create group">
-              <GroupFields branches={branches} teachers={teachers} subjects={subjects} />
+            <ActionForm action={createGroup} submitLabel={G.createGroup}>
+              <GroupFields branches={branches} teachers={teachers} subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
             </ActionForm>
           </CardBody>
         </Card>

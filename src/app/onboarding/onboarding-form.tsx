@@ -5,6 +5,7 @@ import { completeOnboarding } from "./actions";
 import { Field, FormMessage, Input, Select } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 type Group = { id: string; name: string; branchId: string | null; schedule: string | null; subject: { name: string; color: string } | null };
 
@@ -18,6 +19,8 @@ export function OnboardingForm({
   groups: Group[];
 }) {
   const [state, action] = useActionState(completeOnboarding, null);
+  const t = useT();
+  const f = t.fields;
   const [branchId, setBranchId] = useState(branches.length === 1 ? branches[0].id : "");
   const [picked, setPicked] = useState<string[]>([]);
   const visible = groups.filter((g) => !branchId || !g.branchId || g.branchId === branchId);
@@ -26,21 +29,21 @@ export function OnboardingForm({
   return (
     <form action={action} className="mt-8 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Grade or level">
-          <Input name="grade" placeholder="e.g. Grade 10" />
+        <Field label={f.grade}>
+          <Input name="grade" placeholder={f.gradePlaceholder} />
         </Field>
-        <Field label="Phone (optional)">
+        <Field label={f.phoneOptional}>
           <Input name="phone" type="tel" placeholder="+998 90 123 45 67" />
         </Field>
-        <Field label="Your goal" hint="What are you working towards?" className="sm:col-span-2">
-          <Input name="goal" placeholder="e.g. Enter a medical university, pass my final exams…" maxLength={160} />
+        <Field label={f.goal} hint={f.goalHint} className="sm:col-span-2">
+          <Input name="goal" placeholder={f.goalPlaceholder} maxLength={160} />
         </Field>
-        <Field label="Next important exam" hint="Optional — shows a countdown">
+        <Field label={f.examDate} hint={f.examDateHint}>
           <Input type="date" name="examDate" />
         </Field>
-        <Field label="Dream university">
+        <Field label={f.dreamUni}>
           <Select name="targetUniId" defaultValue="">
-            <option value="">Not decided yet</option>
+            <option value="">{f.notDecided}</option>
             {countries.map((c) => (
               <optgroup key={c} label={c}>
                 {universities.filter((u) => u.country === c).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -49,9 +52,9 @@ export function OnboardingForm({
           </Select>
         </Field>
         {branches.length > 0 && (
-          <Field label="Branch">
+          <Field label={f.branch}>
             <Select name="branchId" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-              <option value="">Choose a branch</option>
+              <option value="">{f.chooseBranch}</option>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </Field>
@@ -60,8 +63,8 @@ export function OnboardingForm({
 
       {groups.length > 0 && (
         <fieldset>
-          <legend className="mb-1.5 text-sm font-semibold">Your groups</legend>
-          <p className="mb-3 text-xs text-muted">Pick the classes you attend. Your teacher can also add you.</p>
+          <legend className="mb-1.5 text-sm font-semibold">{f.yourGroups}</legend>
+          <p className="mb-3 text-xs text-muted">{f.yourGroupsHint}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {visible.map((g) => {
               const on = picked.includes(g.id);
@@ -90,8 +93,8 @@ export function OnboardingForm({
       )}
 
       <FormMessage state={state} />
-      <SubmitButton size="lg" className="w-full sm:w-auto" pendingText="Saving…">
-        Start learning
+      <SubmitButton size="lg" className="w-full sm:w-auto" >
+        {t.onboarding.start}
       </SubmitButton>
     </form>
   );

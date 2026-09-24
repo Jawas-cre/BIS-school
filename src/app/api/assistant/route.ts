@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { AI_DAILY_LIMIT, AI_HISTORY_LIMIT, AI_MODEL, TUTOR_SYSTEM, anthropic, studentContext } from "@/lib/ai";
 import { accuracyBy } from "@/lib/stats";
 import { dayKey } from "@/lib/utils";
+import { fmt } from "@/lib/i18n/format";
+import { getI18n } from "@/lib/i18n/server";
 
 const Body = z.object({
   conversationId: z.string().nullish(),
@@ -16,10 +18,12 @@ function problem(status: number, message: string) {
 }
 
 export async function POST(req: Request) {
+  const { locale, t } = await getI18n();
+  const A = t.assistant;
   const user = await getCurrentUser();
-  if (!user) return problem(401, "Please log in again.");
+  if (!user) return problem(401, A.loginAgain);
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return problem(400, "Message is empty or too long.");
+  if (!parsed.success) return problem(400, A.tooLong);
   const { message } = parsed.data;
 
   // Daily limit per student, reset at midnight Tashkent time (UTC+5, no DST).
@@ -27,12 +31,12 @@ export async function POST(req: Request) {
   const sentToday = await db.aiMessage.count({
     where: { role: "user", createdAt: { gte: startOfDay }, conversation: { userId: user.id } },
   });
-  if (sentToday >= AI_DAILY_LIMIT) return problem(429, `You've reached today's limit of ${AI_DAILY_LIMIT} messages. It resets at midnight.`);
+  if (sentToday >= AI_DAILY_LIMIT) return problem(429, fmt(A.limit, { n: AI_DAILY_LIMIT }));
 
   let conversation = parsed.data.conversationId
     ? await db.aiConversation.findFirst({ where: { id: parsed.data.conversationId, userId: user.id } })
     : null;
-  if (parsed.data.conversationId && !conversation) return problem(404, "Conversation not found.");
+  if (parsed.data.conversationId && !conversation) return problem(404, A.notFound);
   conversation ??= await db.aiConversation.create({
     data: { userId: user.id, title: message.replace(/\s+/g, " ").slice(0, 60) },
   });
@@ -94,6 +98,7 @@ export async function POST(req: Request) {
                   avgTestScore: avg._avg.score === null ? null : Math.round(avg._avg.score),
                   weakest: weakTopics.map((t) => `${t.name} (${t.subject.name})`),
                   centerName: user.center?.name ?? null,
+                  locale,
                 }),
               },
             ],
@@ -108,25 +113,25 @@ export async function POST(req: Request) {
         });
         const final = await stream.finalMessage();
         if (final.stop_reason === "refusal") {
-          const note = "\n\n_I can't help with that request. Try asking about a topic you're studying, a practice question or your study plan._";
+          const note = `\n\n_${A.refusal}_`;
           text += note;
           controller.enqueue(encoder.encode(note));
         } else if (final.stop_reason === "max_tokens") {
-          const note = "\n\n_(Answer cut short — ask me to continue.)_";
+          const note = `\n\n_${A.cutShort}_`;
           text += note;
           controller.enqueue(encoder.encode(note));
         }
       } catch (error) {
         const note =
           error instanceof Anthropic.AuthenticationError || (error instanceof Error && /api key|apiKey|credentials/i.test(error.message))
-            ? "The AI Assistant isn't configured yet — ask your center to add an Anthropic API key."
+            ? A.notConfigured
             : error instanceof Anthropic.RateLimitError
-              ? "The assistant is busy right now. Please try again in a minute."
+              ? A.busy
               : error instanceof Anthropic.APIError
-                ? `The assistant ran into an error (${error.status ?? "network"}). Please try again.`
+                ? fmt(A.apiError, { status: error.status ?? A.network })
                 : req.signal.aborted
                   ? ""
-                  : "The assistant couldn't respond. Please try again.";
+                  : A.couldntRespond;
         if (note) {
           const chunk = `${text ? "\n\n" : ""}_${note}_`;
           text += chunk;

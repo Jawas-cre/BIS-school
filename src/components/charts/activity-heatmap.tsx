@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ChartCard, DataTable } from "./chart-card";
+import { useI18n } from "@/lib/i18n/client";
+import { fmt, plural, rich } from "@/lib/i18n/format";
 
 export type ActivityCell = { day: string; questions: number; correct: number };
 
@@ -15,13 +17,12 @@ function level(n: number) {
   return 4;
 }
 
-function fmt(day: string) {
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-}
-
 /** GitHub-style practice calendar; `days` must be consecutive, oldest first, starting on a Monday. */
 export function ActivityHeatmap({ days, streak, best }: { days: ActivityCell[]; streak: number; best: number }) {
   const [hover, setHover] = useState<ActivityCell | null>(null);
+  const { t, date } = useI18n();
+  const c = t.charts;
+  const day = (d: string) => date(`${d}T12:00:00Z`, { year: undefined, timeZone: "UTC" });
   const weeks: ActivityCell[][] = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   const active = days.filter((d) => d.questions > 0);
@@ -29,12 +30,12 @@ export function ActivityHeatmap({ days, streak, best }: { days: ActivityCell[]; 
 
   return (
     <ChartCard
-      title="Practice activity"
-      subtitle={`${active.length} active days · ${total.toLocaleString()} questions in the last ${weeks.length} weeks`}
+      title={c.practiceActivity}
+      subtitle={`${plural(c.activeDays, active.length)} · ${fmt(c.inLastWeeks, { questions: plural(t.common.questions, total), weeks: weeks.length })}`}
       table={
         <DataTable
-          head={["Day", "Questions", "Accuracy"]}
-          rows={[...active].reverse().map((d) => [fmt(d.day), d.questions, `${Math.round((d.correct / d.questions) * 100)}%`])}
+          head={[c.colDay, c.colQuestions, c.colAccuracy]}
+          rows={[...active].reverse().map((d) => [day(d.day), d.questions, `${Math.round((d.correct / d.questions) * 100)}%`])}
         />
       }
     >
@@ -47,7 +48,7 @@ export function ActivityHeatmap({ days, streak, best }: { days: ActivityCell[]; 
                   <button
                     key={d.day}
                     type="button"
-                    aria-label={`${fmt(d.day)}: ${d.questions} questions`}
+                    aria-label={`${day(d.day)}: ${plural(t.common.questions, d.questions)}`}
                     onMouseEnter={() => setHover(d)}
                     onFocus={() => setHover(d)}
                     className="size-[15px] rounded-[3px] outline-none hover:ring-2 hover:ring-ink/30 focus-visible:ring-2 focus-visible:ring-brand"
@@ -61,30 +62,30 @@ export function ActivityHeatmap({ days, streak, best }: { days: ActivityCell[]; 
             <span className="text-ink-2">
               {hover ? (
                 <>
-                  <strong className="text-ink">{hover.questions} questions</strong> on {fmt(hover.day)}
-                  {hover.questions > 0 && ` · ${Math.round((hover.correct / hover.questions) * 100)}% correct`}
+                  {rich(c.dayOn, { questions: <strong className="text-ink">{plural(t.common.questions, hover.questions)}</strong>, date: day(hover.day) })}
+                  {hover.questions > 0 && ` · ${fmt(c.correctPct, { pct: Math.round((hover.correct / hover.questions) * 100) })}`}
                 </>
               ) : (
-                "Hover a day to see details"
+                c.hoverHint
               )}
             </span>
             <span className="flex items-center gap-1">
-              Less
+              {c.less}
               {LEVELS.map((c) => (
                 <span key={c} className="size-[11px] rounded-[3px]" style={{ background: c }} />
               ))}
-              More
+              {c.more}
             </span>
           </div>
         </div>
         <div className="flex gap-6">
           <div>
-            <div className="text-xs font-semibold text-muted">Current streak</div>
-            <div className="font-display text-2xl font-extrabold text-ink">{streak} days</div>
+            <div className="text-xs font-semibold text-muted">{c.currentStreak}</div>
+            <div className="font-display text-2xl font-extrabold text-ink">{plural(t.common.days, streak)}</div>
           </div>
           <div>
-            <div className="text-xs font-semibold text-muted">Best streak</div>
-            <div className="font-display text-2xl font-extrabold text-ink">{best} days</div>
+            <div className="text-xs font-semibold text-muted">{c.bestStreak}</div>
+            <div className="font-display text-2xl font-extrabold text-ink">{plural(t.common.days, best)}</div>
           </div>
         </div>
       </div>

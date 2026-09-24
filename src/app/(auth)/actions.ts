@@ -7,12 +7,18 @@ import { db } from "@/lib/db";
 import { createSession, deleteSession } from "@/lib/session";
 import { homeFor } from "@/lib/auth";
 import { randomCode, slugify } from "@/lib/utils";
+import type { Dict } from "@/lib/i18n/dictionaries";
+import { getT } from "@/lib/i18n/server";
 
 export type FormState = { error?: string; ok?: string } | null;
 
-const email = z.string().trim().toLowerCase().email("Enter a valid email");
-const password = z.string().min(8, "Password must be at least 8 characters");
-const name = z.string().trim().min(2, "Enter your full name").max(80);
+function fields(t: Dict) {
+  return {
+    email: z.string().trim().toLowerCase().email(t.validation.email),
+    password: z.string().min(8, t.validation.passwordMin),
+    name: z.string().trim().min(2, t.validation.fullName).max(80),
+  };
+}
 
 function safeNext(next: FormDataEntryValue | null) {
   const value = typeof next === "string" ? next : "";
@@ -20,7 +26,9 @@ function safeNext(next: FormDataEntryValue | null) {
 }
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
-  const parsed = z.object({ email, password: z.string().min(1, "Enter your password") }).safeParse({
+  const t = await getT();
+  const { email } = fields(t);
+  const parsed = z.object({ email, password: z.string().min(1, t.auth.enterPassword) }).safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
@@ -28,28 +36,27 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
 
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
-    return { error: "Incorrect email or password" };
+    return { error: t.auth.incorrectLogin };
   }
   await createSession(user);
   redirect(safeNext(formData.get("next")) ?? homeFor(user.role));
 }
 
 export async function registerStudent(_: FormState, formData: FormData): Promise<FormState> {
+  const t = await getT();
   const parsed = z
     .object({
-      name,
-      email,
-      password,
-      code: z.string().trim().toUpperCase().min(4, "Enter your center's invite code"),
+      ...fields(t),
+      code: z.string().trim().toUpperCase().min(4, t.auth.enterInviteCode),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { code, ...data } = parsed.data;
 
   const center = await db.center.findUnique({ where: { inviteCode: code } });
-  if (!center) return { error: "That invite code doesn't match any learning center" };
+  if (!center) return { error: t.auth.unknownInviteCode };
   if (await db.user.findUnique({ where: { email: data.email } })) {
-    return { error: "An account with this email already exists" };
+    return { error: t.auth.emailTaken };
   }
 
   const user = await db.user.create({
@@ -66,20 +73,19 @@ export async function registerStudent(_: FormState, formData: FormData): Promise
 }
 
 export async function registerCenter(_: FormState, formData: FormData): Promise<FormState> {
+  const t = await getT();
   const parsed = z
     .object({
-      centerName: z.string().trim().min(2, "Enter the center's name").max(80),
+      centerName: z.string().trim().min(2, t.auth.enterCenterName).max(80),
       city: z.string().trim().max(60).optional(),
-      name,
-      email,
-      password,
+      ...fields(t),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
 
   if (await db.user.findUnique({ where: { email: d.email } })) {
-    return { error: "An account with this email already exists" };
+    return { error: t.auth.emailTaken };
   }
 
   let slug = slugify(d.centerName) || "center";
@@ -92,7 +98,7 @@ export async function registerCenter(_: FormState, formData: FormData): Promise<
         slug,
         city: d.city || null,
         inviteCode: randomCode(6),
-        branches: { create: { name: "Main branch", address: d.city || null } },
+        branches: { create: { name: t.auth.mainBranch, address: d.city || null } },
       },
     });
     return tx.user.create({

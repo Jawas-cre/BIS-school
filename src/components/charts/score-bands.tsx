@@ -1,6 +1,8 @@
 "use client";
 
 import { ChartCard, DataTable } from "./chart-card";
+import { useT } from "@/lib/i18n/client";
+import { fmt, plural } from "@/lib/i18n/format";
 
 const BANDS = [
   { label: "< 40%", min: 0, max: 39 },
@@ -14,13 +16,15 @@ const BANDS = [
 
 /** Histogram of students' average test scores (single series). */
 export function ScoreBands({ scores }: { scores: number[] }) {
+  const t = useT();
+  const c = t.charts;
   const counts = BANDS.map((b) => ({ ...b, n: scores.filter((s) => s >= b.min && s <= b.max).length }));
   const max = Math.max(1, ...counts.map((c) => c.n));
   return (
     <ChartCard
-      title="Score distribution"
-      subtitle={`Average test score per student · ${scores.length} students`}
-      table={<DataTable head={["Score band", "Students"]} rows={counts.map((c) => [c.label, c.n])} />}
+      title={c.scoreDistribution}
+      subtitle={fmt(c.scoreDistributionSub, { students: plural(t.common.students, scores.length) })}
+      table={<DataTable head={[c.colBand, c.colStudents]} rows={counts.map((c) => [c.label, c.n])} />}
     >
       <div className="flex h-56 items-end gap-2 border-b border-[var(--chart-axis)] sm:gap-4">
         {counts.map((c) => (
@@ -31,7 +35,7 @@ export function ScoreBands({ scores }: { scores: number[] }) {
               style={{ height: `${(c.n / max) * 85}%`, minHeight: c.n ? 4 : 0 }}
             />
             <div role="tooltip" className="pointer-events-none absolute -top-2 z-10 hidden -translate-y-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs whitespace-nowrap shadow-pop group-hover:block group-focus-visible:block">
-              <strong className="text-ink">{c.n}</strong> <span className="text-muted">students · {c.label}</span>
+              <strong className="text-ink">{c.n}</strong> <span className="text-muted">{fmt(t.charts.bandStudents, { band: c.label })}</span>
             </div>
           </div>
         ))}

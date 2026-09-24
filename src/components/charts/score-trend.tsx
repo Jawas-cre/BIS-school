@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartCard, DataTable } from "./chart-card";
+import { useT } from "@/lib/i18n/client";
 
 export type ScorePoint = { label: string; title: string; subject: string; score: number };
 
@@ -19,20 +20,22 @@ function TooltipBody({ active, payload }: { active?: boolean; payload?: { payloa
 }
 
 /** Test results over time, as percent correct (single series). */
-export function ScoreTrend({ data, title = "Test results", subtitle = "Percent correct on each completed test" }: { data: ScorePoint[]; title?: string; subtitle?: string }) {
+export function ScoreTrend({ data, title, subtitle }: { data: ScorePoint[]; title?: string; subtitle?: string }) {
+  const t = useT();
+  const c = t.charts;
   const last = data.length - 1;
   return (
     <ChartCard
-      title={title}
-      subtitle={subtitle}
-      table={<DataTable head={["Test", "Subject", "Date", "Score"]} rows={data.map((d) => [d.title, d.subject, d.label, `${d.score}%`])} />}
+      title={title ?? c.testResults}
+      subtitle={subtitle ?? c.testResultsSub}
+      table={<DataTable head={[c.colTest, c.colSubject, c.colDate, c.colScore]} rows={data.map((d) => [d.title, d.subject, d.label, `${d.score}%`])} />}
     >
       {data.length === 0 ? (
         <div className="grid h-64 place-items-center rounded-xl border border-dashed border-line-strong text-center">
           <div>
-            <p className="font-semibold text-ink">No tests yet</p>
-            <p className="mt-1 text-sm text-muted">Your results appear here after your first mock test.</p>
-            <Link href="/tests" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">Browse mock tests →</Link>
+            <p className="font-semibold text-ink">{c.noTests}</p>
+            <p className="mt-1 text-sm text-muted">{c.noTestsText}</p>
+            <Link href="/tests" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">{c.browseTests}</Link>
           </div>
         </div>
       ) : (

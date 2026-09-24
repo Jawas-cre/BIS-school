@@ -4,12 +4,6 @@ export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
 export const DIFFICULTIES: Difficulty[] = ["EASY", "MEDIUM", "HARD"];
 
-export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
-  EASY: "Easy",
-  MEDIUM: "Medium",
-  HARD: "Hard",
-};
-
 export const LETTERS = ["A", "B", "C", "D"];
 
 export function parseChoices(raw: string): string[] {

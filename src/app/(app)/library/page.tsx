@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, ExternalLink, FileText, Library, PlayCircle, Search, Target } from "lucide-react";
 import { db } from "@/lib/db";
@@ -7,20 +6,25 @@ import { EmptyState, PageHeader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { SubjectBadge } from "@/components/subject-icon";
+import { fmt } from "@/lib/i18n/format";
+import { libraryCategory } from "@/lib/i18n/labels";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Library" };
+export const generateMetadata = pageTitle((t) => t.nav.library);
 
 const CATEGORIES = [
-  { key: "", label: "All" },
-  { key: "PRACTICE", label: "Practice & tools", icon: Target },
-  { key: "BOOK", label: "Books", icon: BookOpen },
-  { key: "GUIDE", label: "Guides & tools", icon: FileText },
-  { key: "VIDEO", label: "Video courses", icon: PlayCircle },
+  { key: "" },
+  { key: "PRACTICE", icon: Target },
+  { key: "BOOK", icon: BookOpen },
+  { key: "GUIDE", icon: FileText },
+  { key: "VIDEO", icon: PlayCircle },
 ] as const;
 
 export default async function LibraryPage({ searchParams }: PageProps<"/library">) {
   const user = await requireStudentArea();
   const sp = await searchParams;
+  const t = await getT();
+  const L = t.library;
   const category = typeof sp.category === "string" ? sp.category : "";
   const q = typeof sp.q === "string" ? sp.q.slice(0, 60) : "";
   const items = await db.libraryItem.findMany({
@@ -37,7 +41,7 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
 
   return (
     <div>
-      <PageHeader title="Library" subtitle="Books, practice tools, guides and video courses for every subject — hand-picked by your center and the platform." />
+      <PageHeader title={t.nav.library} subtitle={L.subtitle} />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 shadow-card">
           {CATEGORIES.map((c) => (
@@ -46,19 +50,19 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
               href={`/library${c.key || q ? `?${new URLSearchParams({ ...(c.key ? { category: c.key } : {}), ...(q ? { q } : {}) })}` : ""}`}
               className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", category === c.key ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}
             >
-              {c.label}
+              {c.key ? libraryCategory(t, c.key) : t.common.all}
             </Link>
           ))}
         </div>
         <form className="relative sm:ml-auto sm:w-72" action="/library">
           {category && <input type="hidden" name="category" value={category} />}
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
-          <input name="q" defaultValue={q} placeholder="Search the library…" className="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm shadow-card outline-none focus:border-brand" />
+          <input name="q" defaultValue={q} placeholder={L.search} className="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm shadow-card outline-none focus:border-brand" />
         </form>
       </div>
       {items.length === 0 ? (
-        <EmptyState icon={<Library className="size-5" />} title="Nothing here yet">
-          Try another category or search term.
+        <EmptyState icon={<Library className="size-5" />} title={L.empty}>
+          {L.emptyText}
         </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -84,9 +88,9 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
                 {item.description && <p className="mt-2 flex-1 text-sm text-ink-2">{item.description}</p>}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {item.subject && <SubjectBadge name={item.subject.name} color={item.subject.color} />}
-                  <Badge>{cat?.label ?? item.category}</Badge>
-                  {item.centerId && <Badge tone="brand">From your center</Badge>}
-                  {item.pages && <Badge>{item.pages} pages</Badge>}
+                  <Badge>{libraryCategory(t, item.category)}</Badge>
+                  {item.centerId && <Badge tone="brand">{L.fromCenter}</Badge>}
+                  {item.pages && <Badge>{fmt(L.pages, { n: item.pages })}</Badge>}
                 </div>
               </a>
             );
