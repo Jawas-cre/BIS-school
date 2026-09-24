@@ -17,6 +17,7 @@ export const STUDENT_NAV: NavItem[] = [
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "overview", icon: "LayoutDashboard" },
   { href: "/admin/students", label: "students", icon: "Users" },
+  { href: "/admin/codes", label: "codes", icon: "KeyRound" },
   { href: "/admin/groups", label: "groups", icon: "Layers" },
   { href: "/admin/subjects", label: "subjects", icon: "Shapes" },
   { href: "/admin/questions", label: "adminQuestions", icon: "ListChecks" },

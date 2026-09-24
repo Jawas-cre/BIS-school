@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import { LoginForm } from "./login-form";
 import { getT, pageTitle } from "@/lib/i18n/server";
 
@@ -6,6 +8,7 @@ export const generateMetadata = pageTitle((t) => t.auth.loginTitle);
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
+  if ((await db.user.count()) === 0) redirect("/setup");
   const t = await getT();
   return (
     <div className="animate-fade-up">

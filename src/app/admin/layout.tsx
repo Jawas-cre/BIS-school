@@ -3,7 +3,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { ADMIN_NAV } from "@/components/shell/nav";
 import { logout } from "@/app/(auth)/actions";
 
-const ADMIN_ONLY = new Set(["/admin/staff", "/admin/settings"]);
+const ADMIN_ONLY = new Set(["/admin/codes", "/admin/staff", "/admin/settings"]);
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await requireStaff();

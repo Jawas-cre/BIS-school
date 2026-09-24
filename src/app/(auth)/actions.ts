@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { createSession, deleteSession } from "@/lib/session";
 import { homeFor } from "@/lib/auth";
+import { resolveInvite, consumeInvite } from "@/lib/invites";
 import { randomCode, slugify } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import { getT } from "@/lib/i18n/server";
@@ -42,7 +43,8 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   redirect(safeNext(formData.get("next")) ?? homeFor(user.role));
 }
 
-export async function registerStudent(_: FormState, formData: FormData): Promise<FormState> {
+/** Sign-up with a code from a center: a student code or a teacher code decides the new account's role. */
+export async function registerWithCode(_: FormState, formData: FormData): Promise<FormState> {
   const t = await getT();
   const parsed = z
     .object({
@@ -53,41 +55,42 @@ export async function registerStudent(_: FormState, formData: FormData): Promise
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { code, ...data } = parsed.data;
 
-  const center = await db.center.findUnique({ where: { inviteCode: code } });
-  if (!center) return { error: t.auth.unknownInviteCode };
+  const invite = await resolveInvite(code);
+  if (!invite.ok) {
+    const reasons = { unknown: t.auth.unknownInviteCode, disabled: t.auth.codeDisabled, expired: t.auth.codeExpired, usedUp: t.auth.codeUsedUp };
+    return { error: reasons[invite.reason] };
+  }
   if (await db.user.findUnique({ where: { email: data.email } })) {
     return { error: t.auth.emailTaken };
   }
+  if (invite.inviteId && !(await consumeInvite(invite.inviteId))) return { error: t.auth.codeUsedUp };
 
+  const group = invite.groupId ? await db.group.findFirst({ where: { id: invite.groupId, centerId: invite.centerId } }) : null;
+  const teacher = invite.role === "TEACHER";
   const user = await db.user.create({
     data: {
       name: data.name,
       email: data.email,
       passwordHash: await bcrypt.hash(data.password, 10),
-      role: "STUDENT",
-      centerId: center.id,
+      role: invite.role,
+      centerId: invite.centerId,
+      branchId: group?.branchId ?? null,
+      onboarded: teacher,
+      memberships: group && !teacher ? { create: { groupId: group.id } } : undefined,
     },
   });
   await createSession(user);
-  redirect("/onboarding");
+  redirect(teacher ? "/admin" : "/onboarding");
 }
 
-export async function registerCenter(_: FormState, formData: FormData): Promise<FormState> {
-  const t = await getT();
-  const parsed = z
-    .object({
-      centerName: z.string().trim().min(2, t.auth.enterCenterName).max(80),
-      city: z.string().trim().max(60).optional(),
-      ...fields(t),
-    })
-    .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const d = parsed.data;
+const centerFields = (t: Dict) => ({
+  centerName: z.string().trim().min(2, t.auth.enterCenterName).max(80),
+  city: z.string().trim().max(60).optional(),
+  ...fields(t),
+});
 
-  if (await db.user.findUnique({ where: { email: d.email } })) {
-    return { error: t.auth.emailTaken };
-  }
-
+/** Creates a center with its main branch and its first admin, then signs the admin in. */
+async function createCenterWithAdmin(t: Dict, d: { centerName: string; city?: string; name: string; email: string; password: string }) {
   let slug = slugify(d.centerName) || "center";
   if (await db.center.findUnique({ where: { slug } })) slug = `${slug}-${randomCode(4).toLowerCase()}`;
 
@@ -113,6 +116,29 @@ export async function registerCenter(_: FormState, formData: FormData): Promise<
     });
   });
   await createSession(user);
+}
+
+export async function registerCenter(_: FormState, formData: FormData): Promise<FormState> {
+  const t = await getT();
+  const parsed = z.object(centerFields(t)).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (await db.user.findUnique({ where: { email: parsed.data.email } })) {
+    return { error: t.auth.emailTaken };
+  }
+  await createCenterWithAdmin(t, parsed.data);
+  redirect("/admin?welcome=1");
+}
+
+/** First start on a new install: the person setting up creates the center and their own admin password. */
+export async function setupFirstCenter(_: FormState, formData: FormData): Promise<FormState> {
+  const t = await getT();
+  if ((await db.user.count()) > 0) redirect("/login");
+  const parsed = z
+    .object({ ...centerFields(t), confirm: z.string() })
+    .refine((d) => d.password === d.confirm, { message: t.validation.passwordsDiffer })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  await createCenterWithAdmin(t, parsed.data);
   redirect("/admin?welcome=1");
 }
 

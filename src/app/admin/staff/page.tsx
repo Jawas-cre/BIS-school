@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Field, Input, Select } from "@/components/ui/form";
 import { ActionForm, ConfirmAction } from "@/components/action-form";
 import { createStaff, removeStaff } from "../_actions/people";
+import Link from "next/link";
 import { fmt } from "@/lib/i18n/format";
 import { getT, pageTitle } from "@/lib/i18n/server";
 
@@ -66,7 +67,14 @@ export default async function StaffPage() {
                   {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </Select>
               </Field>
+              <Field label={t.codes.setPassword} hint={t.codes.setPasswordHint}>
+                <Input name="password" type="text" minLength={8} autoComplete="off" />
+              </Field>
             </ActionForm>
+            <p className="mt-4 border-t border-line pt-4 text-sm text-muted">
+              {t.codes.teacherTip}{" "}
+              <Link href="/admin/codes" className="font-semibold text-brand hover:underline">{t.codes.manage} →</Link>
+            </p>
           </CardBody>
         </Card>
       </div>

@@ -31,6 +31,9 @@ student gets the same toolkit for every subject they study.
 ### For learning centers (admins and teachers) — `/admin`
 - **Overview**: invite code, active students, average test scores, score distribution, students who
   need attention, group table, latest results.
+- **Invite codes** (admins only): student codes (optionally joining a group) and teacher codes with
+  use limits, expiry dates and on/off switches.
+- **My account**: name, login email and password.
 - **Students**: searchable list filtered by group, with groups, average test score, accuracy, weekly
   activity and streak; per-student analytics (score trend, accuracy by subject, roadmap, activity,
   test history); create accounts, assign to several groups, reset passwords.
@@ -84,13 +87,32 @@ Every page and server action checks the role on the server, so hiding a link is 
      **More info → Run anyway**.
    - **macOS:** `START-HERE-Mac.command`. The first time, right-click it, choose **Open**, then **Open**
      again (macOS asks once for files downloaded from the internet).
-4. Wait while it prepares everything. The first start installs packages, creates the database with
-   demo data and builds the site (a few minutes, needs internet). Your browser then opens
-   **http://localhost:3000** by itself. Later starts take a few seconds.
+4. The first time, it asks how you want to start:
+   - **1 — Try the demo:** a sample center with students, teachers and results (password `password123`).
+   - **2 — Set up my own center:** the browser opens a setup page where you create your center and
+     **your own admin email and password**. The learning content (subjects, questions, tests, lessons,
+     vocabulary, library, universities) is included; there are no demo accounts.
+5. Wait while it prepares everything. The first start installs packages, creates the database and
+   builds the site (a few minutes, needs internet). Your browser then opens **http://localhost:3000**
+   by itself. Later starts take a few seconds.
 
 Keep the black window open while you use the site; close it (or press `Ctrl + C`) to stop the site.
 Double-clicking again while the site is already running just opens the browser. Your data is kept
-between starts in `prisma/dev.db`.
+between starts in `prisma/dev.db`; to start over (and get the question again), close the site and
+delete that file.
+
+### Accounts, passwords and invite codes
+- **Admins choose their own password** on the setup page, and can change their name, login email and
+  password any time under **My account** (bottom of the sidebar). Teachers and the platform owner have
+  the same page; students change theirs under **Profile**.
+- **Invite codes** (admin panel → *Invite codes*, center admins only): create a **student code** —
+  optionally tied to a group, so new students join it automatically — or a **teacher code**. Each code
+  can have a note, a maximum number of uses and a last valid day, and can be switched off or deleted.
+  People open **/register**, enter the code and choose their own password: students go to their
+  dashboard, teachers to the teacher panel. The center's general student code (no group, no limit) is
+  shown on the same page.
+- Admins can still create accounts directly (Students and Staff pages) and set or generate the password.
+- Demo codes: `DEMO24` (students), `MATH9A` (students, joins *Mathematics · Grade 9 A*), `TEACH24` (teachers).
 
 ### With the terminal
 

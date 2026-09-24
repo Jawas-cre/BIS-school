@@ -45,10 +45,15 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
             <div className="font-display font-bold">{O.inviteTitle}</div>
             <p className="text-sm text-ink-2">{rich(O.inviteText, { register: <strong>/register</strong> })}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-xl border border-line bg-surface px-4 py-2 font-mono text-lg font-bold tracking-[0.3em]">{center.inviteCode}</span>
             <CopyButton text={center.inviteCode} label={O.copyCode} />
             <CopyButton text={`/register?code=${center.inviteCode}`} absolute label={O.copyLink} />
+            {staff.role === "CENTER_ADMIN" && (
+              <Link href="/admin/codes" className="inline-flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-strong">
+                {t.codes.manage}
+              </Link>
+            )}
           </div>
         </div>
       </Card>

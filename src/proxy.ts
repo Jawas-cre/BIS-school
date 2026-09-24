@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { decrypt } from "@/lib/session";
 
-const PUBLIC_PREFIXES = ["/login", "/register", "/join"];
+const PUBLIC_PREFIXES = ["/login", "/register", "/join", "/setup"];
 
 // Optimistic auth check only; every page and action re-verifies through the DAL.
 export async function proxy(req: NextRequest) {

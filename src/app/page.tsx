@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getCurrentUser, homeFor } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PLATFORM_NAME } from "@/lib/brand";
@@ -28,6 +29,7 @@ const STEP_ICONS = [Building2, KeyRound, Users];
 
 export default async function Home() {
   const user = await getCurrentUser();
+  if (!user && (await db.user.count()) === 0) redirect("/setup");
   const { t, num } = await getI18n();
   const L = t.landing;
   const [subjects, questions, tests] = await Promise.all([

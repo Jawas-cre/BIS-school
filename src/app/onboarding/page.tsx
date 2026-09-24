@@ -43,6 +43,7 @@ export default async function OnboardingPage() {
             universities={universities}
             branches={branches.map((b) => ({ id: b.id, name: b.name }))}
             groups={groups}
+            joined={user.memberships.map((m) => m.groupId)}
           />
         </div>
       </div>

@@ -63,6 +63,9 @@ export function PasswordForm() {
       <Field label={P.newPassword} hint={t.auth.passwordHint}>
         <Input name="next" type="password" autoComplete="new-password" minLength={8} required />
       </Field>
+      <Field label={t.account.confirm}>
+        <Input name="confirm" type="password" autoComplete="new-password" minLength={8} required />
+      </Field>
       <FormMessage state={state} />
       <SubmitButton variant="outline">{P.updatePassword}</SubmitButton>
     </form>

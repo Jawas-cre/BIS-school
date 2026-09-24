@@ -125,6 +125,8 @@ export const nav = defineMessages({
     studentView: "Student view",
     adminPanel: "Admin panel",
     platformAdmin: "Platform admin",
+    codes: "Invite codes",
+    account: "My account",
   },
   uz: {
     dashboard: "Bosh sahifa",
@@ -151,6 +153,8 @@ export const nav = defineMessages({
     studentView: "Oʻquvchi koʻrinishi",
     adminPanel: "Boshqaruv paneli",
     platformAdmin: "Platforma boshqaruvi",
+    codes: "Taklif kodlari",
+    account: "Mening hisobim",
   },
 });
 

@@ -7,6 +7,9 @@ import { UNIVERSITIES } from "./universities";
 import { LIBRARY, PLATFORM_NEWS, ROADMAP, SUBJECTS, VOCAB_DECKS } from "./content";
 
 const db = new PrismaClient();
+// `--no-demo`: only the shared learning content, no demo center or accounts. The first visitor then
+// creates their own center and admin password on the /setup page.
+const NO_DEMO = process.argv.includes("--no-demo");
 const rng = mulberry32(42);
 const DAY = 86_400_000;
 
@@ -36,6 +39,7 @@ async function reset() {
   await db.newsPost.deleteMany();
   await db.libraryItem.deleteMany();
   await db.groupMember.deleteMany();
+  await db.inviteCode.deleteMany();
   await db.group.deleteMany();
   await db.user.deleteMany();
   await db.topic.deleteMany();
@@ -226,6 +230,12 @@ async function main() {
     await db.newsPost.create({ data: { ...n, createdAt: new Date(Date.now() - (PLATFORM_NEWS.length - i) * 5 * DAY) } });
   }
 
+  if (NO_DEMO) {
+    console.log("\nDone. Learning content is ready, with no demo accounts.");
+    console.log("Open the site to create your own center and admin password.");
+    return;
+  }
+
   console.log("Accounts & demo center…");
   const hash = await bcrypt.hash("password123", 10);
   await db.user.create({ data: { email: "owner@bislearn.uz", name: "Platform Owner", passwordHash: hash, role: "SUPER_ADMIN", onboarded: true } });
@@ -270,6 +280,13 @@ async function main() {
     if (g.unlocked) await db.groupUnlock.createMany({ data: units.slice(1, 1 + g.unlocked).map((u) => ({ groupId: group.id, unitId: u.id })) });
     groups.set(g.key, { id: group.id, subject: g.subject });
   }
+  // Sample invite codes: one that puts new students straight into a group, one for new teachers.
+  await db.inviteCode.createMany({
+    data: [
+      { centerId: center.id, code: "MATH9A", role: "STUDENT", groupId: groups.get("math")!.id, label: "Mathematics · Grade 9 A — new students", maxUses: 30 },
+      { centerId: center.id, code: "TEACH24", role: "TEACHER", label: "New teachers", maxUses: 5 },
+    ],
+  });
 
   await db.newsPost.create({
     data: {
@@ -442,7 +459,8 @@ async function main() {
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
   console.log("  teacher@demo.uz    – teacher");
-  console.log("  admin@demo.uz      – center admin (invite code DEMO24)");
+  console.log("  admin@demo.uz      – center admin");
+  console.log("  Invite codes: DEMO24 (students), MATH9A (students, joins Mathematics · Grade 9 A), TEACH24 (teachers)");
   console.log("  owner@bislearn.uz  – platform owner");
 }
 

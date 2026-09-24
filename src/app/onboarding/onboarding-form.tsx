@@ -13,16 +13,19 @@ export function OnboardingForm({
   universities,
   branches,
   groups,
+  joined,
 }: {
   universities: { id: string; name: string; country: string }[];
   branches: { id: string; name: string }[];
   groups: Group[];
+  /** Groups the student already joined, e.g. through their invite code. */
+  joined: string[];
 }) {
   const [state, action] = useActionState(completeOnboarding, null);
   const t = useT();
   const f = t.fields;
   const [branchId, setBranchId] = useState(branches.length === 1 ? branches[0].id : "");
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(joined);
   const visible = groups.filter((g) => !branchId || !g.branchId || g.branchId === branchId);
   const countries = [...new Set(universities.map((u) => u.country))];
 

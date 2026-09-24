@@ -5,6 +5,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { createInterface } from "node:readline/promises";
 
 const PORT = Number(process.env.PORT) || 3000;
 const URL = `http://localhost:${PORT}`;
@@ -69,8 +70,32 @@ if (!existsSync("node_modules/next/package.json")) {
   if (!run("npm", ["ci", "--no-audit", "--no-fund"])) stop("Installing failed. Check your internet connection and try again.");
 }
 
+/** First start only: a demo center to explore, or an empty site where you create your own center. */
+async function askHowToStart() {
+  if (!process.stdin.isTTY) return process.env.BIS_START === "own" ? "own" : "demo";
+  console.log(`
+How do you want to start?
+  1  Try the demo: a sample center with students, teachers and results (password: password123)
+  2  Set up my own center: you create the center and your own admin password in the browser`);
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    for (;;) {
+      const answer = (await rl.question("\nType 1 or 2 and press Enter: ")).trim();
+      if (answer === "1") return "demo";
+      if (answer === "2") return "own";
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+const firstRun = !existsSync(path.join("prisma", "dev.db"));
+const start = firstRun ? await askHowToStart() : "keep";
+
 say("Preparing the database…");
-if (!run("node", [path.join("scripts", "setup.mjs")])) stop("Setting up the database failed. Close this window and try again.");
+const setupArgs = [path.join("scripts", "setup.mjs"), ...(start === "own" ? ["--no-demo"] : [])];
+if (!run("node", setupArgs)) stop("Setting up the database failed. Close this window and try again.");
+if (start === "own") say("When the browser opens, create your center and your own admin email and password.");
 
 const buildId = path.join(".next", "BUILD_ID");
 if (!existsSync(buildId) || newestSource() > statSync(buildId).mtimeMs) {

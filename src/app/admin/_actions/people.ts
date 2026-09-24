@@ -200,12 +200,13 @@ export async function createStaff(_: ActionState, fd: FormData): Promise<ActionS
       email: z.string().trim().toLowerCase().email(t.validation.email),
       role: z.enum(["TEACHER", "CENTER_ADMIN"]),
       branchId: z.string().optional(),
+      password: z.string().max(64).optional(),
     })
     .safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   if (await db.user.findUnique({ where: { email: d.email } })) return { error: t.adminStudents.emailTaken };
-  const password = tempPassword();
+  const password = d.password && d.password.length >= 8 ? d.password : tempPassword();
   const branch = await ownBranch(admin.centerId, d.branchId);
   await db.user.create({
     data: { name: d.name, email: d.email, role: d.role, centerId: admin.centerId, branchId: branch?.id ?? null, onboarded: true, passwordHash: await bcrypt.hash(password, 10) },

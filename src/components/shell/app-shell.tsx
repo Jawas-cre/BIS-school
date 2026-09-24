@@ -25,6 +25,7 @@ import {
   X,
   ArrowLeftRight,
   Shapes,
+  KeyRound,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { LanguageMenu } from "@/components/language-menu";
@@ -52,6 +53,7 @@ const ICONS = {
   Settings,
   Building2,
   Shapes,
+  KeyRound,
 };
 
 export type ShellUser = {
@@ -87,6 +89,8 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const { t, num } = useI18n();
+  // Students manage their details on /profile; staff and the platform owner on "My account".
+  const accountHref = area === "student" ? "/profile" : `/${area}/account`;
   // The drawer remembers which page it was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
@@ -141,18 +145,16 @@ export function AppShell({
             {t.nav[switchLink.label]}
           </Link>
         )}
-        {area === "student" && (
-          <Link
-            href="/profile"
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
-              isActive(pathname, "/profile") ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-            )}
-          >
-            <UserRound className="size-[18px] text-muted" />
-            {t.nav.profile}
-          </Link>
-        )}
+        <Link
+          href={accountHref}
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
+            isActive(pathname, accountHref) ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+          )}
+        >
+          <UserRound className="size-[18px] text-muted" />
+          {area === "student" ? t.nav.profile : t.nav.account}
+        </Link>
         <form action={logoutAction}>
           <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-danger">
             <LogOut className="size-[18px] text-muted" />
@@ -217,7 +219,7 @@ export function AppShell({
             <LanguageMenu />
             <ThemeMenu />
             <Link
-              href={area === "student" ? "/profile" : "#"}
+              href={accountHref}
               className="flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
             >
               <Avatar name={user.name} size={32} />

@@ -46,6 +46,7 @@ export async function changePassword(_: ProfileState, formData: FormData): Promi
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   if (next.length < 8) return { error: t.validation.passwordMin };
+  if (formData.has("confirm") && formData.get("confirm") !== next) return { error: t.validation.passwordsDiffer };
   if (!(await bcrypt.compare(current, user.passwordHash))) return { error: t.profile.currentIncorrect };
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(next, 10) } });
   return { ok: t.profile.passwordChanged };

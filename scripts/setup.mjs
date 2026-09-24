@@ -1,11 +1,13 @@
 // One-command local setup: `npm run setup`.
 // Creates .env with a random SESSION_SECRET (if it doesn't exist yet), creates the database
 // and loads the demo data. Run `npm run setup -- --reset` to wipe the database and reload the demo.
+// Add `--no-demo` to load only the learning content and create your own center on the site.
 import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const reset = process.argv.includes("--reset");
+const noDemo = process.argv.includes("--no-demo");
 
 if (existsSync(".env")) {
   console.log("✓ .env already exists — keeping it");
@@ -29,7 +31,7 @@ run("npx prisma db push");
 if (hadDatabase && !reset) {
   console.log("\n✓ Database already exists — kept your data. Run `npm run setup -- --reset` to reload the demo data.");
 } else {
-  run("npx tsx prisma/seed/index.ts");
+  run(`npx tsx prisma/seed/index.ts${noDemo ? " --no-demo" : ""}`);
 }
 
 // The double-click launchers start the site themselves, so the hint is only for manual setup.
