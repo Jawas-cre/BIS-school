@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, visibleTo } from "@/lib/auth";
 import { recordPractice } from "@/lib/activity";
 import { roadmapFor } from "@/lib/roadmap";
 import { isCorrect } from "@/lib/sat";
@@ -25,7 +25,7 @@ async function unlockedUnit(unitId: string) {
 export async function submitUnitQuiz(unitId: string, responses: Record<string, string>): Promise<QuizResult> {
   const { user, unit } = await unlockedUnit(unitId);
   const ids = Object.keys(responses).slice(0, 10);
-  const questions = await db.question.findMany({ where: { id: { in: ids }, skill: unit.skill ?? "" } });
+  const questions = await db.question.findMany({ where: { id: { in: ids }, skill: unit.skill ?? "", ...visibleTo(user.centerId) } });
 
   const items = questions.map((q) => {
     const response = (responses[q.id] ?? "").slice(0, 40);

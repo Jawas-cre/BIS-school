@@ -18,7 +18,7 @@ const UniInput = z.object({
   satHigh: z.coerce.number().int().min(400).max(1600),
   tuition: z.coerce.number().int().min(0),
   aid: z.string().trim().max(200),
-  website: z.string().url(),
+  website: z.string().trim().url().refine((u) => /^https?:\/\//i.test(u), "Use an http(s) link"),
   about: z.string().trim().max(600),
 });
 

@@ -10,6 +10,9 @@ import type { ActionState } from "@/components/action-form";
 
 const skillSet = new Set(ALL_SKILLS.map((s) => s.skill));
 
+/** Only http(s) links — a `javascript:` URL would run script when a student clicks it. */
+const webUrl = (message: string) => z.string().trim().url(message).refine((u) => /^https?:\/\//i.test(u), message);
+
 // ─── Questions ──────────────────────────────────────────────────────────────
 
 export async function saveQuestion(questionId: string | null, _: ActionState, fd: FormData): Promise<ActionState> {
@@ -171,7 +174,7 @@ export async function saveUnit(unitId: string | null, _: ActionState, fd: FormDa
       section: z.enum(["RW", "MATH"]),
       skill: z.string().optional(),
       summary: z.string().trim().min(2, "Add a one-line summary").max(200),
-      videoUrl: z.union([z.literal(""), z.string().url("Enter a valid video link")]).optional(),
+      videoUrl: z.union([z.literal(""), webUrl("Enter a valid video link")]).optional(),
       notes: z.string().max(20000).optional(),
     })
     .safeParse(Object.fromEntries(fd));
@@ -268,7 +271,7 @@ export async function createLibraryItem(_: ActionState, fd: FormData): Promise<A
       author: z.string().trim().max(80).optional(),
       description: z.string().trim().max(400).optional(),
       category: z.enum(["PRACTICE", "BOOK", "GUIDE", "VIDEO"]),
-      url: z.string().url("Enter a valid link (https://…)"),
+      url: webUrl("Enter a valid link (https://…)"),
       pages: z.union([z.literal(""), z.coerce.number().int().min(1).max(5000)]).optional(),
     })
     .safeParse(Object.fromEntries(fd));
