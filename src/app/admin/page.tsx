@@ -70,7 +70,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
             <CopyButton text={center.inviteCode} label={O.copyCode} />
             <CopyButton text={`/register?code=${center.inviteCode}`} absolute label={O.copyLink} />
             {staff.role === "CENTER_ADMIN" && (
-              <Link href="/admin/codes" className="pressable inline-flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-strong">
+              <Link href="/admin/codes" className="inline-flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-strong">
                 {t.codes.manage}
               </Link>
             )}

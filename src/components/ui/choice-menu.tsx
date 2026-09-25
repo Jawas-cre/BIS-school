@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** A small header menu for picking one option (language, color mode). */
 export function ChoiceMenu<T extends string>({
+  name,
   label,
   trigger,
   options,
@@ -13,6 +14,8 @@ export function ChoiceMenu<T extends string>({
   onChange,
   className,
 }: {
+  /** Marks the button (data-menu), e.g. so the color switch can start from it. */
+  name?: string;
   label: string;
   trigger: ReactNode;
   options: { value: T; label: string; icon?: ReactNode }[];
@@ -47,6 +50,7 @@ export function ChoiceMenu<T extends string>({
         title={label}
         aria-haspopup="menu"
         aria-expanded={open}
+        data-menu={name}
         onClick={() => setOpen((o) => !o)}
         className="flex h-9 min-w-9 items-center justify-center gap-1 rounded-xl px-2 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
       >

@@ -39,7 +39,7 @@ export default async function GroupsPage() {
       <div className={cn("grid gap-6", !teacher && "xl:grid-cols-[1fr_340px]")}>
         <div className="grid content-start gap-4 md:grid-cols-2">
           {groups.map((g) => (
-            <Link key={g.id} href={`${base}/groups/${g.id}`} className="pressable-card group rounded-2xl border border-line bg-surface p-5 shadow-card hover:border-line-strong">
+            <Link key={g.id} href={`${base}/groups/${g.id}`} className="group rounded-2xl border border-line bg-surface p-5 shadow-card hover:border-line-strong">
               <div className="flex items-start justify-between">
                 {g.subject ? <SubjectIcon icon={g.subject.icon} color={g.subject.color} /> : <div className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand"><Layers className="size-5" /></div>}
                 <span className="flex items-center gap-1 text-sm font-semibold text-ink-2"><Users className="size-4" /> {g._count.members}</span>

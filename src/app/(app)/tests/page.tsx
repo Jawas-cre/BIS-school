@@ -127,7 +127,7 @@ export default async function TestsPage({ searchParams }: PageProps<"/tests">) {
                       const b = best.get(test.id);
                       const { minutes, questions } = info(test);
                       return (
-                        <Link key={test.id} href={`/tests/${test.id}`} className="pressable-card group rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
+                        <Link key={test.id} href={`/tests/${test.id}`} className="group rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
                           <div className="flex items-start justify-between gap-2">
                             <span className="flex items-center gap-2 font-semibold text-ink group-hover:text-brand"><FileText className="size-4 text-muted" /> {test.title}</span>
                             {b && <Badge tone={b.score >= 80 ? "success" : b.score >= 60 ? "warning" : "danger"}>{b.score}%</Badge>}

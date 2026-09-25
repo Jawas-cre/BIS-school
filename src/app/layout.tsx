@@ -4,6 +4,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 import { PLATFORM_NAME } from "@/lib/brand";
 import { I18nProvider } from "@/lib/i18n/client";
+import { PressFeedback } from "@/components/press-feedback";
 import { getI18n } from "@/lib/i18n/server";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin", "cyrillic"] });
@@ -18,8 +19,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Applies the saved color mode before first paint. Without a saved choice it follows the
-// device, and keeps following it when the device switches between light and dark.
-const themeScript = `(function(){var d=document.documentElement,m=matchMedia("(prefers-color-scheme: dark)");function a(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=m.matches?"dark":"light";d.dataset.theme=t}a();m.addEventListener("change",function(){document.startViewTransition&&!matchMedia("(prefers-reduced-motion: reduce)").matches?document.startViewTransition(a):a()});addEventListener("storage",function(e){if(e.key==="theme")a()})})()`;
+// device, and keeps following it when the device switches between light and dark (with the
+// same corner-to-corner switch as the color-mode menu, once theme-menu.tsx has loaded).
+const themeScript = `(function(){var d=document.documentElement,m=matchMedia("(prefers-color-scheme: dark)");function a(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=m.matches?"dark":"light";d.dataset.theme=t}a();m.addEventListener("change",function(){window.__switchTheme?window.__switchTheme():a()});addEventListener("storage",function(e){if(e.key==="theme")a()})})()`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const { locale } = await getI18n();
@@ -35,6 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full">
         <I18nProvider locale={locale}>{children}</I18nProvider>
+        <PressFeedback />
       </body>
     </html>
   );

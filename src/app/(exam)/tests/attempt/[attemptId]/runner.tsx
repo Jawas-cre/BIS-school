@@ -307,7 +307,7 @@ function Popover({ children, onClose, className }: { children: React.ReactNode; 
   const t = useT();
   return (
     <>
-      <button aria-label={t.common.close} className="fixed inset-0 z-30 cursor-default" onClick={onClose} />
+      <button aria-label={t.common.close} data-no-press className="fixed inset-0 z-30 cursor-default" onClick={onClose} />
       <div className={cn("fixed z-40 max-h-[70vh] overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-pop", className)}>
         <button onClick={onClose} aria-label={t.common.close} className="absolute top-3 right-3 grid size-7 place-items-center rounded-lg text-muted hover:bg-surface-2">
           <X className="size-4" />

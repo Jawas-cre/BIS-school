@@ -26,25 +26,51 @@ function applyTheme() {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
 }
 
-/** Switches colors with a short cross-fade instead of a hard cut (styles in globals.css). */
-function applySmoothly() {
+/** Where the new colors start: the color-mode button in the header, or else the top-right corner. */
+function revealOrigin() {
+  const button = [...document.querySelectorAll<HTMLElement>('[data-menu="theme"]')].find((b) => b.offsetWidth > 0);
+  const box = button?.getBoundingClientRect();
+  return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: window.innerWidth, y: 0 };
+}
+
+/**
+ * Switches light/dark smoothly: the new colors spread as a circle from the color-mode button until
+ * they reach the far corner of the screen (styles in globals.css). Browsers without view
+ * transitions fade the colors instead; with "reduce motion" on it switches at once.
+ */
+function switchTheme() {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return applyTheme();
-  if (document.startViewTransition) {
-    document.startViewTransition(applyTheme);
+  const root = document.documentElement;
+  if (!document.startViewTransition) {
+    root.classList.add("theme-fading");
+    applyTheme();
+    window.setTimeout(() => root.classList.remove("theme-fading"), 500);
     return;
   }
-  const root = document.documentElement;
-  root.classList.add("theme-fading");
-  applyTheme();
-  window.setTimeout(() => root.classList.remove("theme-fading"), 450);
+  const { x, y } = revealOrigin();
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  root.dataset.themeReveal = "";
+  const transition = document.startViewTransition(applyTheme);
+  transition.ready
+    .then(() =>
+      root.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 750, easing: "cubic-bezier(0.65, 0, 0.35, 1)", pseudoElement: "::view-transition-new(root)" },
+      ),
+    )
+    .catch(() => {});
+  transition.finished.finally(() => delete root.dataset.themeReveal);
 }
+
+// The inline script in the root layout calls this when the device switches between light and dark.
+if (typeof window !== "undefined") (window as Window & { __switchTheme?: () => void }).__switchTheme = switchTheme;
 
 function setMode(mode: Mode) {
   try {
     if (mode === "system") localStorage.removeItem(STORAGE_KEY);
     else localStorage.setItem(STORAGE_KEY, mode);
   } catch {}
-  applySmoothly();
+  switchTheme();
   listeners.forEach((l) => l());
 }
 
@@ -65,6 +91,7 @@ export function ThemeMenu({ className }: { className?: string }) {
   const Icon = ICONS[mode];
   return (
     <ChoiceMenu
+      name="theme"
       label={t.theme.label}
       className={className}
       trigger={<Icon className="size-[18px]" />}

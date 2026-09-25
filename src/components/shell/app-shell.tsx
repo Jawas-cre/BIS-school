@@ -126,7 +126,7 @@ export function AppShell({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "pressable group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
                 active ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
               )}
             >
@@ -144,7 +144,7 @@ export function AppShell({
           <Link
             key={link.href}
             href={link.href}
-            className="pressable flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
           >
             <ArrowLeftRight className="size-[18px] text-muted" />
             {t.nav[link.label]}
@@ -153,7 +153,7 @@ export function AppShell({
         <Link
           href={accountHref}
           className={cn(
-            "pressable flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
             isActive(pathname, accountHref) ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
           )}
         >
@@ -176,7 +176,7 @@ export function AppShell({
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-          <button aria-label={t.shell.closeMenu} className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <button aria-label={t.shell.closeMenu} data-no-press className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] animate-fade-up border-r border-line bg-surface shadow-pop">
             <button
               aria-label={t.shell.closeMenu}
@@ -225,7 +225,7 @@ export function AppShell({
             <ThemeMenu />
             <Link
               href={accountHref}
-              className="pressable flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
+              className="flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
             >
               <Avatar name={user.name} size={32} />
               <span className="hidden text-left leading-tight sm:block">
