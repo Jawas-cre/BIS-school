@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, BadgeCheck, ClipboardCheck, KeyRound, Target, Users } from "lucide-react";
+import { Activity, AlertTriangle, BadgeCheck, ClipboardCheck, KeyRound, Smartphone, Target, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { panelBase, requireStaff, staffGroups, staffStudents } from "@/lib/auth";
 import { average, centerStudents } from "@/lib/admin";
@@ -7,6 +7,8 @@ import { PageHeader, StatTile, Avatar } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
+import { QrCode } from "@/components/qr-code";
+import { phoneAddress } from "@/lib/network";
 import { ScoreBands } from "@/components/charts/score-bands";
 import { fmt, plural, rich } from "@/lib/i18n/format";
 import { getI18n, pageTitle } from "@/lib/i18n/server";
@@ -21,7 +23,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
   const O = t.overview;
   const teacher = staff.role === "TEACHER";
   const base = panelBase(staff.role);
-  const [students, groups, recent] = await Promise.all([
+  const [students, groups, recent, phoneUrl] = await Promise.all([
     centerStudents(staff.centerId, { teacherId: teacher ? staff.id : undefined }),
     db.group.findMany({ where: staffGroups(staff), include: { teacher: { select: { name: true } }, branch: { select: { name: true } }, subject: { select: { name: true, color: true } } }, orderBy: { name: "asc" } }),
     db.testAttempt.findMany({
@@ -30,6 +32,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
       take: 8,
       include: { user: { select: { id: true, name: true } }, test: { select: { title: true, subject: { select: { name: true } } } } },
     }),
+    phoneAddress(),
   ]);
   const activeWeek = students.filter((s) => s.weekQuestions > 0).length;
   const attention = students.filter((s) => s.weekQuestions === 0 || (s.accuracy !== null && s.accuracy < 55)).slice(0, 6);
@@ -77,6 +80,24 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
           </div>
         </div>
       </Card>
+
+      {phoneUrl && (
+        <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
+          <QrCode value={phoneUrl} label={t.phone.qrLabel} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 font-display font-bold">
+              <Smartphone className="size-4 text-brand" /> {t.phone.title}
+            </div>
+            <p className="mt-1 text-sm text-ink-2">{t.phone.text}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-xl border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm font-bold break-all">{phoneUrl}</span>
+              <CopyButton text={phoneUrl} label={t.phone.copy} />
+            </div>
+            <p className="mt-3 text-xs text-muted">{t.phone.homeScreen}</p>
+            <p className="mt-1 text-xs text-muted">{t.phone.trouble}</p>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label={O.statStudents} value={students.length} hint={plural(t.common.groups, groups.length)} icon={<Users className="size-4" />} />

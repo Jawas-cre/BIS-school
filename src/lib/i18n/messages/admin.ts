@@ -1079,3 +1079,22 @@ export const teacher = defineMessages({
     detailsByAdmin: "Bu maʼlumotlarni faqat markaz administratori oʻzgartira oladi.",
   },
 });
+
+export const phone = defineMessages({
+  en: {
+    title: "Open BIS Learn on your phone",
+    text: "Connect your phone to the same Wi-Fi as this computer, then scan the code with the camera or type the address below.",
+    qrLabel: "QR code with the address of this site",
+    copy: "Copy address",
+    homeScreen: "To use it like an app: on iPhone tap Share → Add to Home Screen; on Android tap ⋮ → Add to Home screen.",
+    trouble: "Doesn't open? This computer must stay on with the BIS Learn window open, and when Windows asks about Node.js, allow it on private networks.",
+  },
+  uz: {
+    title: "BIS Learn saytini telefoningizda oching",
+    text: "Telefoningizni shu kompyuter bilan bir xil Wi-Fi tarmogʻiga ulang, soʻng kodni kamera bilan skanerlang yoki quyidagi manzilni kiriting.",
+    qrLabel: "Sayt manzili yozilgan QR kod",
+    copy: "Manzilni nusxalash",
+    homeScreen: "Ilova kabi ishlatish uchun: iPhone — Ulashish (Share) → Bosh ekranga qoʻshish (Add to Home Screen); Android — ⋮ → Bosh ekranga qoʻshish (Add to Home screen).",
+    trouble: "Ochilmayaptimi? Bu kompyuter yoniq va BIS Learn oynasi ochiq turishi kerak. Windows Node.js haqida soʻrasa, shaxsiy tarmoqlarda ruxsat bering.",
+  },
+});

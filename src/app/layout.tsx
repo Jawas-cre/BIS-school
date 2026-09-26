@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
@@ -15,8 +15,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: `${PLATFORM_NAME} — ${t.landing.tagline}`, template: `%s · ${PLATFORM_NAME}` },
     description: t.landing.metaDescription,
+    // Added to an iPhone home screen, the site opens full screen like an app.
+    appleWebApp: { capable: true, title: PLATFORM_NAME, statusBarStyle: "default" },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0f1c" },
+  ],
+};
 
 // Applies the saved color mode before first paint. Without a saved choice it follows the
 // device, and keeps following it when the device switches between light and dark (with the

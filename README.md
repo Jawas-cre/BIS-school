@@ -115,6 +115,21 @@ Double-clicking again while the site is already running just opens the browser. 
 between starts in `prisma/dev.db`; to start over (and get the questions again), close the site and
 delete that file. Forgot the admin password? Open a terminal in the folder and run `npm run reset-password`.
 
+### Use it on your phone
+
+While the site runs on the computer, phones and tablets on the **same Wi-Fi** can open it too:
+
+1. The start-here window prints the address for phones (for example `http://192.168.1.23:3000`), and
+   the admin **Overview** shows it with a **QR code** — point the phone's camera at it.
+2. The first time, Windows may ask whether Node.js may use the network: click **Allow access**
+   (private networks). If you clicked Cancel, allow it under *Windows Security → Firewall → Allow an
+   app through firewall → Node.js*.
+3. To use it like an app, add it to the home screen: **iPhone** — Safari → Share → *Add to Home
+   Screen* (opens full screen with the BIS Learn icon); **Android** — Chrome → ⋮ → *Add to Home screen*.
+
+The computer has to stay on with the start-here window open. Phones on other networks (mobile data,
+students at home) can't reach it — for that the site has to be online; see *Deploying* below.
+
 ### Automatic updates — no new zip needed
 
 While the start-here window is open, BIS Learn checks GitHub every 5 minutes (and at every start) for a

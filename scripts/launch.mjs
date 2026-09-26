@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { askOwnerDetails, EXIT } from "./owner.mjs";
 import { findUpdate, install, undo, updatesOff } from "./update.mjs";
@@ -104,6 +105,19 @@ async function waitUntilUp(seconds = 120) {
     if (await isUp()) return true;
   }
   return false;
+}
+
+/** This computer's address on the Wi-Fi or cable network, for phones (same rules as src/lib/network.ts). */
+function phoneUrl() {
+  const virtual = /vEthernet|Hyper-V|WSL|VirtualBox|VMware|docker|br-|veth|Loopback|utun|awdl|llw|tailscale|zerotier/i;
+  const rank = (ip) => (ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ? 2 : 3);
+  const ips = Object.entries(os.networkInterfaces())
+    .filter(([name]) => !virtual.test(name))
+    .flatMap(([, list]) => list ?? [])
+    .filter((a) => a.family === "IPv4" && !a.internal && !a.address.startsWith("169.254."))
+    .map((a) => a.address)
+    .sort((a, b) => rank(a) - rank(b));
+  return ips.length ? `http://${ips[0]}:${PORT}` : null;
 }
 
 function openBrowser() {
@@ -292,6 +306,10 @@ async function updateWhileRunning() {
 
 say(`Starting the site at ${URL} — your browser will open by itself.\nKeep this window open while you use the site. To stop it, close this window or press Ctrl+C.`);
 startServer();
-if (await waitUntilUp()) openBrowser();
+if (await waitUntilUp()) {
+  openBrowser();
+  const phone = phoneUrl();
+  if (phone) say(`On phones and tablets on the same Wi-Fi, open ${phone} (the admin overview also shows a QR code).\nIf Windows asks about Node.js, click "Allow access".`);
+}
 if (noUpdates) say(`Automatic updates are off: ${noUpdates}.`);
 else setInterval(updateWhileRunning, UPDATE_EVERY_MS);
