@@ -49,6 +49,8 @@ export const auth = defineMessages({
     emailTaken: "An account with this email already exists",
     enterCenterName: "Enter the center's name",
     mainBranch: "Main branch",
+    centerSignupClosedTitle: "New centers can't sign up here",
+    centerSignupClosedText: "This site belongs to one learning center. If you're a student or teacher there, join with the invite code your center gave you.",
   },
   uz: {
     loginTitle: "Kirish",
@@ -98,6 +100,8 @@ export const auth = defineMessages({
     emailTaken: "Bu email bilan hisob allaqachon mavjud",
     enterCenterName: "Markaz nomini kiriting",
     mainBranch: "Asosiy filial",
+    centerSignupClosedTitle: "Bu yerda yangi markaz ochib boʻlmaydi",
+    centerSignupClosedText: "Bu sayt bitta oʻquv markaziga tegishli. Agar u yerda oʻqisangiz yoki dars bersangiz, markazingiz bergan taklif kodi bilan qoʻshiling.",
   },
 });
 

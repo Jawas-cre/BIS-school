@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { LoginForm } from "./login-form";
+import { centerSignupOpen } from "@/lib/signup";
 import { getT, pageTitle } from "@/lib/i18n/server";
 
 export const generateMetadata = pageTitle((t) => t.auth.loginTitle);
@@ -9,7 +10,7 @@ export const generateMetadata = pageTitle((t) => t.auth.loginTitle);
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
   if ((await db.user.count()) === 0) redirect("/setup");
-  const t = await getT();
+  const [t, signupOpen] = await Promise.all([getT(), centerSignupOpen()]);
   return (
     <div className="animate-fade-up">
       <h1 className="font-display text-3xl font-extrabold tracking-tight">{t.auth.welcomeBack}</h1>
@@ -20,11 +21,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <Link href="/register" className="font-semibold text-brand hover:underline">
           {t.auth.joinWithCenterCode}
         </Link>
-        <br />
-        {t.auth.runningCenter}{" "}
-        <Link href="/register/center" className="font-semibold text-brand hover:underline">
-          {t.auth.createYourCenter}
-        </Link>
+        {signupOpen && (
+          <>
+            <br />
+            {t.auth.runningCenter}{" "}
+            <Link href="/register/center" className="font-semibold text-brand hover:underline">
+              {t.auth.createYourCenter}
+            </Link>
+          </>
+        )}
       </p>
     </div>
   );

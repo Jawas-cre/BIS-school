@@ -162,6 +162,9 @@ changes. Nothing to install: it works with the zip copy, without Git.
   dashboard, teachers to the teacher panel. The center's general student code (no group, no limit) is
   shown on the same page.
 - Admins can still create accounts directly (Students and Staff pages) and set or generate the password.
+- **New centers:** on a site set up with the start-here file (it has an owner), `/register/center` is
+  closed, so a shared link only lets people in with your invite codes. Set `BIS_CENTER_SIGNUP="on"` in
+  `.env` to allow other centers to sign up. An online platform without an owner stays open.
 - Demo codes: `DEMO24` (students), `MATH9A` (students, joins *Mathematics · Grade 9 A*), `TEACH24` (teachers).
 
 ### With the terminal
@@ -216,6 +219,7 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 | `ANTHROPIC_MODEL` | no | Defaults to `claude-opus-5` |
 | `AI_DAILY_LIMIT` | no | Messages per student per day (default 60) |
 | `BIS_UPDATES` | no | `off` stops automatic updates of zip copies (default on) |
+| `BIS_CENTER_SIGNUP` | no | `on` lets new centers sign up at `/register/center` on a site with an owner (default off) |
 
 ## Scripts
 

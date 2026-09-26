@@ -1,6 +1,7 @@
 import { Building2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/lib/auth";
+import { centerSignupOpen } from "@/lib/signup";
 import { PageHeader, StatTile } from "@/components/ui/misc";
 import { getI18n, pageTitle } from "@/lib/i18n/server";
 
@@ -18,7 +19,7 @@ export default async function PlatformHome() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title={P.title} subtitle={P.subtitle} />
+      <PageHeader title={P.title} subtitle={(await centerSignupOpen()) ? P.subtitle : P.subtitleClosed} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label={P.statCenters} value={centers.length} icon={<Building2 className="size-4" />} />
         <StatTile label={P.statStudents} value={num(students)} />

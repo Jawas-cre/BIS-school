@@ -848,6 +848,7 @@ export const platform = defineMessages({
   en: {
     title: "Learning centers",
     subtitle: "Every center on the platform. Centers sign up themselves at /register/center.",
+    subtitleClosed: "Every center on this site. New centers can't sign up on their own here (to allow it, set BIS_CENTER_SIGNUP=\"on\" in the .env file).",
     statCenters: "Centers",
     statStudents: "Students",
     statTests: "Tests completed",
@@ -889,6 +890,7 @@ export const platform = defineMessages({
   uz: {
     title: "Oʻquv markazlari",
     subtitle: "Platformadagi barcha markazlar. Markazlar /register/center sahifasida oʻzlari roʻyxatdan oʻtadi.",
+    subtitleClosed: "Bu saytdagi barcha markazlar. Bu yerda yangi markazlar oʻzlari roʻyxatdan oʻta olmaydi (ruxsat berish uchun .env faylida BIS_CENTER_SIGNUP=\"on\" qiling).",
     statCenters: "Markazlar",
     statStudents: "Oʻquvchilar",
     statTests: "Yakunlangan testlar",
