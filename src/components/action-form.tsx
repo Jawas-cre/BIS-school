@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, type ReactNode } from "react";
 import { FormMessage } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 export type ActionState = { error?: string; ok?: string } | null;
 type Action = (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -12,7 +13,7 @@ type Action = (prev: ActionState, formData: FormData) => Promise<ActionState>;
 export function ActionForm({
   action,
   children,
-  submitLabel = "Save",
+  submitLabel,
   pendingText,
   className,
   resetOnSuccess = false,
@@ -29,6 +30,7 @@ export function ActionForm({
   submitClassName?: string;
 }) {
   const [state, formAction] = useActionState(action, null);
+  const t = useT();
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (resetOnSuccess && state?.ok) ref.current?.reset();
@@ -38,7 +40,7 @@ export function ActionForm({
       {children}
       <FormMessage state={state} />
       <SubmitButton pendingText={pendingText} variant={submitVariant} className={submitClassName}>
-        {submitLabel}
+        {submitLabel ?? t.common.save}
       </SubmitButton>
     </form>
   );

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { requireStudentArea } from "@/lib/auth";
 import { loadAttempt, parseJson, secondsLeft } from "@/lib/tests";
 import { parseChoices } from "@/lib/quiz";
 import { expireIfNeeded } from "@/app/(app)/tests/actions";
 import { Runner } from "./runner";
+import { pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Test in progress" };
+export const generateMetadata = pageTitle((t) => t.exam.inProgressTitle);
 
 export default async function AttemptPage({ params }: PageProps<"/tests/attempt/[attemptId]">) {
   const user = await requireStudentArea();

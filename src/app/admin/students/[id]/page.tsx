@@ -1,9 +1,8 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { panelBase, requireStaff, staffStudents } from "@/lib/auth";
 import { liveStreak } from "@/lib/activity";
 import { activityCalendar, subjectComparison, userTotals } from "@/lib/stats";
 import { roadmapOverview } from "@/lib/roadmap";
@@ -18,15 +17,21 @@ import { ScoreTrend } from "@/components/charts/score-trend";
 import { SubjectBars } from "@/components/charts/subject-bars";
 import { ActivityHeatmap } from "@/components/charts/activity-heatmap";
 import { removeStudent, resetStudentPassword, updateStudent } from "../../_actions/people";
-import { formatDate, pct } from "@/lib/utils";
+import { pct } from "@/lib/utils";
+import { fmt } from "@/lib/i18n/format";
+import { getI18n, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Student" };
+export const generateMetadata = pageTitle((t) => t.adminStudent.title);
 
 export default async function StudentDetail({ params }: PageProps<"/admin/students/[id]">) {
   const staff = await requireStaff();
   const { id } = await params;
+  const { t, date, num } = await getI18n();
+  const S = t.adminStudent;
+  // Teachers open the students of their own groups, read-only; center admins can also edit and remove them.
+  const admin = staff.role === "CENTER_ADMIN";
   const student = await db.user.findFirst({
-    where: { id, centerId: staff.centerId, role: "STUDENT" },
+    where: { id, ...staffStudents(staff) },
     include: { targetUni: true, memberships: { include: { group: { include: { subject: true } } } } },
   });
   if (!student) notFound();
@@ -48,7 +53,7 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
   return (
     <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/admin/students" className="hover:text-ink">Students</Link>
+        <Link href={`${panelBase(staff.role)}/students`} className="hover:text-ink">{admin ? t.nav.students : t.nav.myStudents}</Link>
         <ChevronRight className="size-3.5" />
         <span>{student.name}</span>
       </nav>
@@ -62,48 +67,48 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
             {student.grade && <Badge>{student.grade}</Badge>}
             {student.memberships.map((m) => <Badge key={m.groupId} tone="brand">{m.group.name}</Badge>)}
             {student.targetUni && <Badge>{student.targetUni.name}</Badge>}
-            {student.examDate && <Badge>Exam {formatDate(student.examDate)}</Badge>}
+            {student.examDate && <Badge>{fmt(S.exam, { date: date(student.examDate) })}</Badge>}
           </div>
-          {student.goal && <p className="mt-2 text-sm text-ink-2">Goal: {student.goal}</p>}
+          {student.goal && <p className="mt-2 text-sm text-ink-2">{fmt(S.goal, { goal: student.goal })}</p>}
         </div>
-        {staff.role === "CENTER_ADMIN" && (
-          <ConfirmAction action={removeStudent.bind(null, student.id)} label="Remove student" confirm={`Remove ${student.name} and all of their progress? This cannot be undone.`}>
-            <Trash2 className="size-4" /> Remove
+        {admin && (
+          <ConfirmAction action={removeStudent.bind(null, student.id)} label={S.removeLabel} confirm={fmt(S.removeConfirm, { name: student.name })}>
+            <Trash2 className="size-4" /> {t.common.remove}
           </ConfirmAction>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <StatTile label="Average test" value={totals.avgTestScore !== null ? `${totals.avgTestScore}%` : "—"} hint={`${totals.tests} tests`} />
-        <StatTile label="Accuracy" value={totals.answered ? `${totals.accuracy}%` : "—"} hint={`${totals.answered} answers`} />
-        <StatTile label="Roadmap units" value={totals.units} hint="completed" />
-        <StatTile label="Streak" value={liveStreak(student)} hint={`best ${student.bestStreak}`} />
-        <StatTile label="Words mastered" value={totals.mastered} hint={`${student.xp.toLocaleString()} XP`} />
+        <StatTile label={S.avgTest} value={totals.avgTestScore !== null ? `${totals.avgTestScore}%` : "—"} hint={fmt(S.testsCount, { n: totals.tests })} />
+        <StatTile label={S.accuracy} value={totals.answered ? `${totals.accuracy}%` : "—"} hint={fmt(S.answers, { n: num(totals.answered) })} />
+        <StatTile label={S.roadmapUnits} value={totals.units} hint={S.completed} />
+        <StatTile label={S.streak} value={liveStreak(student)} hint={fmt(S.best, { n: student.bestStreak })} />
+        <StatTile label={S.wordsMastered} value={totals.mastered} hint={fmt(S.xp, { n: num(student.xp) })} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2">
+        <div className={admin ? "xl:col-span-2" : "xl:col-span-3"}>
           <ScoreTrend
-            data={attempts.map((a) => ({ label: formatDate(a.finishedAt ?? a.startedAt, { year: undefined }), title: a.test.title, subject: a.test.subject?.name ?? "Mixed", score: a.score ?? 0 }))}
+            data={attempts.map((a) => ({ label: date(a.finishedAt ?? a.startedAt, { year: undefined }), title: a.test.title, subject: a.test.subject?.name ?? t.common.mixed, score: a.score ?? 0 }))}
           />
         </div>
-        <Card>
-          <CardHeader title="Edit student" />
+        {admin && <Card>
+          <CardHeader title={S.editTitle} />
           <CardBody>
             <ActionForm action={updateStudent.bind(null, student.id)}>
-              <Field label="Full name"><Input name="name" defaultValue={student.name} required /></Field>
+              <Field label={t.auth.fullName}><Input name="name" defaultValue={student.name} required /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone"><Input name="phone" defaultValue={student.phone ?? ""} /></Field>
-                <Field label="Grade"><Input name="grade" defaultValue={student.grade ?? ""} /></Field>
+                <Field label={t.fields.phone}><Input name="phone" defaultValue={student.phone ?? ""} /></Field>
+                <Field label={S.grade}><Input name="grade" defaultValue={student.grade ?? ""} /></Field>
               </div>
-              <Field label="Branch">
+              <Field label={t.fields.branch}>
                 <Select name="branchId" defaultValue={student.branchId ?? ""}>
                   <option value="">—</option>
                   {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </Select>
               </Field>
               <fieldset>
-                <legend className="mb-1.5 text-sm font-semibold">Groups</legend>
+                <legend className="mb-1.5 text-sm font-semibold">{t.adminStudents.groups}</legend>
                 <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-line p-2">
                   {groups.map((g) => (
                     <label key={g.id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-surface-2">
@@ -114,15 +119,13 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
                 </div>
               </fieldset>
             </ActionForm>
-            {staff.role === "CENTER_ADMIN" && (
-              <div className="mt-5 border-t border-line pt-4">
-                <ActionForm action={resetStudentPassword.bind(null, student.id)} submitLabel="Reset password" submitVariant="outline" pendingText="Resetting…">
-                  <p className="text-sm text-muted">Generates a new password you can share with the student.</p>
-                </ActionForm>
-              </div>
-            )}
+            <div className="mt-5 border-t border-line pt-4">
+              <ActionForm action={resetStudentPassword.bind(null, student.id)} submitLabel={S.resetPassword} submitVariant="outline" pendingText={S.resetting}>
+                <p className="text-sm text-muted">{S.resetText}</p>
+              </ActionForm>
+            </div>
           </CardBody>
-        </Card>
+        </Card>}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -130,7 +133,7 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
           <SubjectBars rows={comparison} showGroup={false} />
         </div>
         <Card>
-          <CardHeader title="Roadmap progress" />
+          <CardHeader title={S.roadmapProgress} />
           <CardBody className="space-y-4">
             {overview.map((o) => {
               const s = subjects.find((x) => x.id === o.subjectId)!;
@@ -152,29 +155,29 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
       <ActivityHeatmap days={calendar} streak={liveStreak(student)} best={student.bestStreak} />
 
       <Card>
-        <CardHeader title="Test history" />
+        <CardHeader title={S.testHistory} />
         <CardBody className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
-                <th className="py-2 pr-3 font-semibold">Test</th>
-                <th className="py-2 pr-3 font-semibold">Subject</th>
-                <th className="py-2 pr-3 font-semibold">Date</th>
-                <th className="py-2 pr-3 text-right font-semibold">Correct</th>
-                <th className="py-2 text-right font-semibold">Score</th>
+                <th className="py-2 pr-3 font-semibold">{t.charts.colTest}</th>
+                <th className="py-2 pr-3 font-semibold">{t.charts.colSubject}</th>
+                <th className="py-2 pr-3 font-semibold">{t.charts.colDate}</th>
+                <th className="py-2 pr-3 text-right font-semibold">{t.tests.colCorrect}</th>
+                <th className="py-2 text-right font-semibold">{t.charts.colScore}</th>
               </tr>
             </thead>
             <tbody>
               {[...attempts].reverse().map((a) => (
                 <tr key={a.id} className="border-b border-line last:border-0">
                   <td className="py-2 pr-3 font-medium">{a.test.title}</td>
-                  <td className="py-2 pr-3 text-muted">{a.test.subject?.name ?? "Mixed"}</td>
-                  <td className="py-2 pr-3 text-muted">{formatDate(a.finishedAt ?? a.startedAt)}</td>
+                  <td className="py-2 pr-3 text-muted">{a.test.subject?.name ?? t.common.mixed}</td>
+                  <td className="py-2 pr-3 text-muted">{date(a.finishedAt ?? a.startedAt)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{a.correct}/{a.total}</td>
                   <td className="py-2 text-right font-bold tabular-nums">{a.score}%</td>
                 </tr>
               ))}
-              {attempts.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-muted">No tests taken yet.</td></tr>}
+              {attempts.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-muted">{S.noTests}</td></tr>}
             </tbody>
           </table>
         </CardBody>

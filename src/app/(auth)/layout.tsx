@@ -1,16 +1,12 @@
 import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageMenu } from "@/components/language-menu";
+import { ThemeMenu } from "@/components/theme-menu";
+import { getT } from "@/lib/i18n/server";
 import { CheckCircle2 } from "lucide-react";
 import { PLATFORM_NAME } from "@/lib/brand";
 
-const POINTS = [
-  "Every subject your center teaches, in one place",
-  "Question bank with step-by-step explanations",
-  "Timed mock tests with instant results",
-  "A roadmap of lessons for each subject, plus vocabulary, a library, top universities and an AI tutor",
-];
-
-export default function AuthLayout({ children }: LayoutProps<"/">) {
+export default async function AuthLayout({ children }: LayoutProps<"/">) {
+  const t = await getT();
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
       <aside className="relative hidden overflow-hidden bg-brand p-12 text-white lg:flex lg:flex-col">
@@ -28,10 +24,10 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         </div>
         <div className="relative mt-auto max-w-lg">
           <h2 className="font-display text-4xl leading-tight font-extrabold tracking-tight">
-            Every student, every subject, one learning platform.
+            {t.authLayout.headline}
           </h2>
           <ul className="mt-8 space-y-3 text-[15px] text-white/90">
-            {POINTS.map((p) => (
+            {t.authLayout.points.map((p) => (
               <li key={p} className="flex gap-3">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-white/80" />
                 {p}
@@ -39,12 +35,15 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
             ))}
           </ul>
         </div>
-        <p className="relative mt-12 text-sm text-white/60">Trusted by learning centers across Central Asia.</p>
+        <p className="relative mt-12 text-sm text-white/60">{t.landing.footer}</p>
       </aside>
       <main className="flex flex-col px-5 py-6 sm:px-10">
         <div className="flex items-center justify-between">
           <Logo className="lg:invisible" />
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <LanguageMenu />
+            <ThemeMenu />
+          </div>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">{children}</div>
       </main>

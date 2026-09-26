@@ -4,6 +4,8 @@ import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip } from "react-leaflet";
 import type { MapUni } from "./uni-map";
+import { useT } from "@/lib/i18n/client";
+import { countryName } from "@/lib/i18n/labels";
 
 export default function UniMapInner({
   universities,
@@ -16,6 +18,7 @@ export default function UniMapInner({
   center?: [number, number];
   zoom?: number;
 }) {
+  const t = useT();
   return (
     <MapContainer center={center} zoom={zoom} minZoom={2} scrollWheelZoom={false} worldCopyJump className="size-full" style={{ background: "var(--surface-2)" }}>
       <TileLayer
@@ -38,10 +41,10 @@ export default function UniMapInner({
               <div className="min-w-44 font-sans">
                 <div className="font-bold">{u.name}</div>
                 <div className="text-xs opacity-70">
-                  {u.city}, {u.country}
+                  {u.city}, {countryName(t, u.country)}
                 </div>
                 <Link href={`/universities/${u.id}`} className="mt-1 inline-block text-xs font-semibold">
-                  View details →
+                  {t.universities.viewDetails}
                 </Link>
               </div>
             </Popup>

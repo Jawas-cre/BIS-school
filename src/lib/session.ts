@@ -1,6 +1,6 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export type Role = "SUPER_ADMIN" | "CENTER_ADMIN" | "TEACHER" | "STUDENT";
 
@@ -40,6 +40,15 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   }
 }
 
+/**
+ * Secure cookies only when the page was served over https. On http://localhost or a local network
+ * address (the start-here launchers) a Secure cookie would be dropped by some browsers.
+ */
+async function servedOverHttps() {
+  const proto = (await headers()).get("x-forwarded-proto");
+  return proto ? proto.split(",")[0].trim() === "https" : process.env.NODE_ENV === "production";
+}
+
 export async function createSession(user: { id: string; role: string; centerId: string | null }) {
   const expires = new Date(Date.now() + MAX_AGE_DAYS * 86_400_000);
   const token = await encrypt({
@@ -50,7 +59,7 @@ export async function createSession(user: { id: string; role: string; centerId: 
   });
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: await servedOverHttps(),
     sameSite: "lax",
     path: "/",
     expires,

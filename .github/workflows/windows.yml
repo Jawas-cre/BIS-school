@@ -1,0 +1,125 @@
+# Installs BIS Learn on Windows the way a center does — the zip, START-HERE-Windows.bat — as a
+# standard (non-administrator) Windows user, then checks the site in a browser. The last step builds
+# with Turbopack too and lists the links it makes in .next; the production build (Webpack) makes none.
+name: Windows check
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      BIS_ADMIN_EMAIL: admin@windows-check.example
+      BIS_ADMIN_PASSWORD: windows-check-1
+      USER_NAME: bischeck
+      USER_PASSWORD: Bis-Check-26!x # at most 14 characters, or `net user` stops to ask a question
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Make the zip and unzip it to C:\bis
+        shell: pwsh
+        run: |
+          node scripts/make-zip.mjs HEAD C:\bis-learn.zip
+          New-Item -ItemType Directory C:\bis | Out-Null
+          Expand-Archive C:\bis-learn.zip -DestinationPath C:\bis
+          "EXPECT_VERSION=$((git rev-parse --short=7 HEAD).Trim())" >> $env:GITHUB_ENV
+
+      - name: Create a standard Windows user (no administrator rights)
+        shell: pwsh
+        run: |
+          net user $env:USER_NAME $env:USER_PASSWORD /add
+          if ($LASTEXITCODE) { throw "Could not create the user" }
+          # Lets the user run scheduled tasks; gives no administrator rights or symbolic-link privilege.
+          net localgroup "Performance Log Users" $env:USER_NAME /add
+          if ($LASTEXITCODE) { throw "Could not add the user to Performance Log Users" }
+          icacls C:\bis /grant "$($env:USER_NAME):(OI)(CI)F" /T /Q
+          if ($LASTEXITCODE) { throw "Could not give the user the C:\bis folder" }
+
+      - name: Double-click START-HERE-Windows.bat as that user
+        shell: pwsh
+        run: |
+          $nodeDir = Split-Path (Get-Command node).Source
+          @"
+          @echo off
+          set "PATH=$nodeDir;%PATH%"
+          set "BIS_ADMIN_EMAIL=$env:BIS_ADMIN_EMAIL"
+          set "BIS_ADMIN_PASSWORD=$env:BIS_ADMIN_PASSWORD"
+          set "BIS_ADMIN_NAME=Windows Check"
+          set "BIS_CENTER_NAME=Windows Check Center"
+          set "npm_config_cache=C:\bis\npm-cache"
+          whoami /priv > C:\bis\privileges.txt
+          call C:\bis\bis-learn\START-HERE-Windows.bat < NUL > C:\bis\launch.log 2>&1
+          "@ | Set-Content -Encoding ascii C:\bis\start.cmd
+          $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\bis\start.cmd"
+          Register-ScheduledTask -TaskName BisStart -Action $action -User $env:USER_NAME -Password $env:USER_PASSWORD -RunLevel Limited | Out-Null
+          Start-ScheduledTask -TaskName BisStart
+
+          $deadline = (Get-Date).AddMinutes(25)
+          $up = $false
+          do {
+            Start-Sleep -Seconds 10
+            try { $up = (Invoke-WebRequest http://localhost:3000/login -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200 } catch {}
+            $failed = (Test-Path C:\bis\launch.log) -and (Select-String -Path C:\bis\launch.log -Pattern "could not start" -Quiet)
+          } until ($up -or $failed -or (Get-Date) -gt $deadline)
+          Get-Content C:\bis\launch.log -Tail 60
+          if (Test-Path C:\bis\bis-learn\build-log.txt) { Write-Host "--- build-log.txt ---"; Get-Content C:\bis\bis-learn\build-log.txt -Tail 80 }
+          if (-not $up) { throw "The site did not start" }
+          Write-Host "Symbolic-link privilege of ${env:USER_NAME}: $(if (Select-String -Path C:\bis\privileges.txt -Pattern SeCreateSymbolicLink -Quiet) { 'yes' } else { 'no' })"
+          $links = @(Get-ChildItem C:\bis\bis-learn\.next -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue)
+          Write-Host "Symbolic links or junctions in .next: $($links.Count)"
+
+      - name: Check the site in a browser
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory C:\pw | Out-Null
+          Copy-Item .github/windows-check.mjs C:\pw\check.mjs
+          Set-Location C:\pw
+          npm init -y | Out-Null
+          npm install --no-audit --no-fund playwright | Out-Null
+          npx playwright install chromium | Out-Null
+          node check.mjs
+
+      - name: For comparison — a Turbopack build as the same user (informational)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Stop-ScheduledTask -TaskName BisStart
+          Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+          $nodeDir = Split-Path (Get-Command node).Source
+          @"
+          @echo off
+          set "PATH=$nodeDir;%PATH%"
+          cd /d C:\bis\bis-learn
+          call node_modules\.bin\next build > C:\bis\turbopack.log 2>&1
+          echo exit code %ERRORLEVEL% >> C:\bis\turbopack.log
+          "@ | Set-Content -Encoding ascii C:\bis\turbopack.cmd
+          $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\bis\turbopack.cmd"
+          Register-ScheduledTask -TaskName BisTurbopack -Action $action -User $env:USER_NAME -Password $env:USER_PASSWORD -RunLevel Limited | Out-Null
+          Start-ScheduledTask -TaskName BisTurbopack
+          $deadline = (Get-Date).AddMinutes(15)
+          do { Start-Sleep -Seconds 10 } until (((Test-Path C:\bis\turbopack.log) -and (Select-String -Path C:\bis\turbopack.log -Pattern "exit code" -Quiet)) -or (Get-Date) -gt $deadline)
+          Get-Content C:\bis\turbopack.log -Tail 15
+          $links = @(Get-ChildItem C:\bis\bis-learn\.next -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue)
+          Write-Host "Links or junctions Turbopack made in .next: $($links.Count)"
+          $links | ForEach-Object { Write-Host "  $($_.FullName) -> $($_.Target)" }
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-logs
+          path: |
+            C:\bis\launch.log
+            C:\bis\turbopack.log
+            C:\bis\bis-learn\build-log.txt
+          if-no-files-found: ignore

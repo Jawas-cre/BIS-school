@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -7,17 +6,22 @@ import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { bankQuery, filtersToQuery, parseFilters } from "@/lib/questions";
 import { parseChoices } from "@/lib/quiz";
 import { SubjectBadge } from "@/components/subject-icon";
-import { DifficultyBadge, Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { DifficultyBadge } from "@/components/ui/difficulty-badge";
 import { QuestionBody } from "@/components/question/question-body";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Practice } from "./practice";
+import { fmt, plural } from "@/lib/i18n/format";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Practice" };
+export const generateMetadata = pageTitle((t) => t.bank.practiceTitle);
 
 export default async function QuestionPage({ params, searchParams }: PageProps<"/questions/[id]">) {
   const user = await requireStudentArea();
   const { id } = await params;
+  const t = await getT();
+  const B = t.bank;
   const f = parseFilters(await searchParams);
   const q = await db.question.findFirst({ where: { id, ...visibleTo(user.centerId) }, include: { subject: true, topic: true } });
   if (!q) notFound();
@@ -37,7 +41,7 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <nav className="flex min-w-0 items-center gap-1.5 text-sm text-muted">
           <Link href={`/questions${qs}`} className="hover:text-ink">
-            Question Bank
+            {t.nav.questions}
           </Link>
           <ChevronRight className="size-3.5" />
           <Link href={`/questions${filtersToQuery({ subject: q.subjectId, topic: q.topicId })}`} className="truncate hover:text-ink">
@@ -55,14 +59,14 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
             aria-disabled={!prev}
             className={cn(buttonClass("outline", "sm"), !prev && "pointer-events-none opacity-40")}
           >
-            <ChevronLeft className="size-4" /> Prev
+            <ChevronLeft className="size-4" /> {t.common.prev}
           </Link>
           <Link
             href={next ? `/questions/${next.id}${qs}` : "#"}
             aria-disabled={!next}
             className={cn(buttonClass("outline", "sm"), !next && "pointer-events-none opacity-40")}
           >
-            Next <ChevronRight className="size-4" />
+            {t.common.next} <ChevronRight className="size-4" />
           </Link>
         </div>
       </div>
@@ -72,9 +76,9 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
           <SubjectBadge name={q.subject.name} color={q.subject.color} />
           <span className="text-sm font-semibold text-ink-2">{q.topic.name}</span>
           <DifficultyBadge difficulty={q.difficulty} />
-          {q.type === "SHORT" && <Badge>Typed answer</Badge>}
+          {q.type === "SHORT" && <Badge>{B.typedAnswer}</Badge>}
           {last !== undefined && (
-            <Badge tone={last ? "success" : "danger"}>Last try: {last ? "correct" : "incorrect"}</Badge>
+            <Badge tone={last ? "success" : "danger"}>{last ? B.lastTryCorrect : B.lastTryIncorrect}</Badge>
           )}
         </div>
         <div className="p-5 sm:p-8">
@@ -86,7 +90,7 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
               choices={parseChoices(q.choices)}
               saved={saved.has(q.id)}
               nextHref={next ? `/questions/${next.id}${qs}` : null}
-              askText={`Can you help me understand this ${q.subject.name} question about ${q.topic.name.toLowerCase()}?\n\n${q.passage ? `${q.passage}\n\n` : ""}${q.stem}${
+              askText={`${fmt(B.askText, { subject: q.subject.name, topic: q.topic.name })}\n\n${q.passage ? `${q.passage}\n\n` : ""}${q.stem}${
                 parseChoices(q.choices).length ? `\n\n${parseChoices(q.choices).map((c, i) => `${"ABCD"[i]}) ${c}`).join("\n")}` : ""
               }`}
             />
@@ -96,8 +100,10 @@ export default async function QuestionPage({ params, searchParams }: PageProps<"
 
       {history.length > 0 && (
         <p className="mt-4 text-sm text-muted">
-          You&apos;ve answered this question {history.length === 5 ? "5+" : history.length} time{history.length === 1 ? "" : "s"} ·{" "}
-          {history.filter((h) => h.correct).length} correct
+          {fmt(B.history, {
+            times: plural(B.times, history.length, { n: history.length === 5 ? "5+" : history.length }),
+            correct: history.filter((h) => h.correct).length,
+          })}
         </p>
       )}
     </div>

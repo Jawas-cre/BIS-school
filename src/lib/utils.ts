@@ -24,38 +24,6 @@ export function addDays(key: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function formatDate(date: Date | string, opts: Intl.DateTimeFormatOptions = {}) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    ...opts,
-  }).format(new Date(date));
-}
-
-export function timeAgo(date: Date | string): string {
-  const seconds = Math.round((Date.now() - new Date(date).getTime()) / 1000);
-  const units: [number, string][] = [
-    [60, "second"],
-    [60, "minute"],
-    [24, "hour"],
-    [7, "day"],
-    [4.35, "week"],
-    [12, "month"],
-    [Infinity, "year"],
-  ];
-  let value = seconds;
-  for (const [size, unit] of units) {
-    if (Math.abs(value) < size) {
-      const v = Math.max(1, Math.floor(value));
-      return `${v} ${unit}${v === 1 ? "" : "s"} ago`;
-    }
-    value /= size;
-  }
-  return "";
-}
-
 export function daysUntil(date: Date | string): number {
   const ms = new Date(date).getTime() - Date.now();
   return Math.ceil(ms / 86_400_000);

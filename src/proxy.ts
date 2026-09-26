@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { decrypt } from "@/lib/session";
 
-const PUBLIC_PREFIXES = ["/login", "/register", "/join"];
+const PUBLIC_PREFIXES = ["/login", "/register", "/join", "/setup"];
 
 // Optimistic auth check only; every page and action re-verifies through the DAL.
 export async function proxy(req: NextRequest) {
@@ -18,5 +18,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|jpg|ico|webp)$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:png|svg|jpg|ico|webp)$).*)"],
 };

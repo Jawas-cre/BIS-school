@@ -24,19 +24,20 @@ model Center {
   city       String?
   about      String?
   accent     String   @default("#2563eb") // brand color used across the center's UI
-  inviteCode String   @unique // students join a center with this code
+  inviteCode String   @unique // general student code; InviteCode rows hold extra student and teacher codes
   createdAt  DateTime @default(now())
 
-  branches   Branch[]
-  users      User[]
-  groups     Group[]
-  subjects   Subject[]
-  questions  Question[]
-  tests      Test[]
-  units      RoadmapUnit[]
-  vocabDecks VocabDeck[]
-  library    LibraryItem[]
-  news       NewsPost[]
+  branches    Branch[]
+  inviteCodes InviteCode[]
+  users       User[]
+  groups      Group[]
+  subjects    Subject[]
+  questions   Question[]
+  tests       Test[]
+  units       RoadmapUnit[]
+  vocabDecks  VocabDeck[]
+  library     LibraryItem[]
+  news        NewsPost[]
 }
 
 model Branch {
@@ -64,7 +65,7 @@ model Subject {
   icon        String  @default("book") // key into the icon set in src/components/subject-icon.tsx
   order       Int     @default(0)
 
-  center    Center?        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  center    Center?       @relation(fields: [centerId], references: [id], onDelete: Cascade)
   topics    Topic[]
   groups    Group[]
   questions Question[]
@@ -99,12 +100,33 @@ model Group {
   schedule  String? // e.g. "Mon/Wed/Fri 16:00"
   createdAt DateTime @default(now())
 
-  center  Center        @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  branch  Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  subject Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  teacher User?         @relation("GroupTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
-  members GroupMember[]
-  unlocks GroupUnlock[]
+  center      Center        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  branch      Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  subject     Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher     User?         @relation("GroupTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  members     GroupMember[]
+  unlocks     GroupUnlock[]
+  inviteCodes InviteCode[]
+
+  @@index([centerId])
+}
+
+// Codes a center admin hands out so students or teachers can create their own accounts.
+model InviteCode {
+  id        String    @id @default(cuid())
+  centerId  String
+  code      String    @unique
+  role      String // STUDENT | TEACHER
+  groupId   String? // students who join with this code are added to the group
+  label     String? // the admin's note, e.g. "September intake"
+  maxUses   Int? // null = unlimited
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  group  Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([centerId])
 }
@@ -127,10 +149,12 @@ model GroupMember {
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
+  loginId      String?   @unique // teachers' ID, e.g. "T1001" — they can log in with it instead of the email
   passwordHash String
   name         String
   phone        String?
   role         String    @default("STUDENT") // SUPER_ADMIN | CENTER_ADMIN | TEACHER | STUDENT
+  isOwner      Boolean   @default(false) // the admin who installed this copy: also manages the platform settings
   centerId     String?
   branchId     String?
   onboarded    Boolean   @default(false)

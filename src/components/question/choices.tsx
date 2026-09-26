@@ -3,6 +3,8 @@
 import { Check, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
+import { fmt, rich } from "@/lib/i18n/format";
 
 const LETTERS = ["A", "B", "C", "D"];
 
@@ -27,6 +29,7 @@ export function Choices({
   onStrike?: (letter: string) => void;
   disabled?: boolean;
 }) {
+  const q = useT().question;
   return (
     <div className="space-y-2.5" role="radiogroup">
       {choices.map((choice, i) => {
@@ -74,8 +77,8 @@ export function Choices({
               <button
                 type="button"
                 onClick={() => onStrike(letter)}
-                aria-label={`${isStruck ? "Restore" : "Eliminate"} choice ${letter}`}
-                title={isStruck ? "Restore" : "Eliminate"}
+                aria-label={fmt(isStruck ? q.restoreChoice : q.eliminateChoice, { letter })}
+                title={isStruck ? q.restore : q.eliminate}
                 className={cn(
                   "grid size-7 shrink-0 place-items-center rounded-full border text-[11px] font-bold transition-colors",
                   isStruck ? "border-ink-2 bg-ink-2 text-surface" : "border-line-strong text-muted hover:text-ink",
@@ -102,14 +105,15 @@ export function GridIn({
   disabled?: boolean;
   result?: { correct: boolean; answer: string } | null;
 }) {
+  const q = useT().question;
   return (
     <div className="max-w-sm">
-      <label className="mb-1.5 block text-sm font-semibold text-ink">Your answer</label>
+      <label className="mb-1.5 block text-sm font-semibold text-ink">{q.yourAnswer}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value.slice(0, 40))}
         disabled={disabled || Boolean(result)}
-        placeholder="Type your answer"
+        placeholder={q.typeAnswer}
         autoComplete="off"
         className={cn(
           "h-12 w-full rounded-xl border-2 bg-surface px-4 text-lg text-ink outline-none focus:border-brand",
@@ -118,11 +122,9 @@ export function GridIn({
       />
       <p className="mt-1.5 text-xs text-muted">
         {result && !result.correct ? (
-          <>
-            Correct answer: <strong className="text-ink">{result.answer}</strong>
-          </>
+          rich(q.correctAnswer, { answer: <strong className="text-ink">{result.answer}</strong> })
         ) : (
-          "Numbers can be written as whole numbers, decimals (0.75) or fractions (3/4)."
+          q.formatHint
         )}
       </p>
     </div>

@@ -4,10 +4,15 @@ import { addDays, dayKey, pct } from "@/lib/utils";
 
 export type StudentRow = Awaited<ReturnType<typeof centerStudents>>[number];
 
-/** Students in a center (optionally one group) with the numbers staff care about. */
-export async function centerStudents(centerId: string, opts: { groupId?: string } = {}) {
+/** Students in a center (optionally one group, or one teacher's groups) with the numbers staff care about. */
+export async function centerStudents(centerId: string, opts: { groupId?: string; teacherId?: string } = {}) {
+  const inGroups = opts.groupId || opts.teacherId;
   const students = await db.user.findMany({
-    where: { centerId, role: "STUDENT", ...(opts.groupId ? { memberships: { some: { groupId: opts.groupId } } } : {}) },
+    where: {
+      centerId,
+      role: "STUDENT",
+      ...(inGroups ? { memberships: { some: { ...(opts.groupId ? { groupId: opts.groupId } : {}), ...(opts.teacherId ? { group: { teacherId: opts.teacherId } } : {}) } } } : {}),
+    },
     orderBy: { name: "asc" },
     include: {
       memberships: { include: { group: { select: { id: true, name: true, subject: { select: { name: true, color: true } } } } } },

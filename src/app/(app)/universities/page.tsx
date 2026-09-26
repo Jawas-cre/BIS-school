@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Heart, MapPin, Search } from "lucide-react";
 import { db } from "@/lib/db";
@@ -8,17 +7,22 @@ import { UniMap } from "@/components/uni-map";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { setDreamUniversity } from "./actions";
 import { cn } from "@/lib/utils";
+import { countryName } from "@/lib/i18n/labels";
+import { getI18n, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Top Universities" };
+export const generateMetadata = pageTitle((t) => t.nav.universities);
 
-const SORTS = { rank: "Featured", acceptance: "Most selective", name: "A–Z" } as const;
+const SORTS = ["rank", "acceptance", "name"] as const;
+type Sort = (typeof SORTS)[number];
 
 export default async function UniversitiesPage({ searchParams }: PageProps<"/universities">) {
   const user = await requireStudentArea();
   const sp = await searchParams;
+  const { t, num } = await getI18n();
+  const U = t.universities;
   const country = typeof sp.country === "string" ? sp.country : "";
   const q = typeof sp.q === "string" ? sp.q.slice(0, 60) : "";
-  const sort = (typeof sp.sort === "string" && sp.sort in SORTS ? sp.sort : "rank") as keyof typeof SORTS;
+  const sort: Sort = SORTS.find((s) => s === sp.sort) ?? "rank";
 
   const all = await db.university.findMany({ orderBy: { rank: "asc" } });
   const countries = [...new Set(all.map((u) => u.country))].sort((a, b) => (a === "Uzbekistan" ? -1 : b === "Uzbekistan" ? 1 : a.localeCompare(b)));
@@ -35,7 +39,7 @@ export default async function UniversitiesPage({ searchParams }: PageProps<"/uni
 
   return (
     <div>
-      <PageHeader title="Top Universities" subtitle="Explore universities in Uzbekistan and around the world: requirements, acceptance rates, tuition and financial aid." />
+      <PageHeader title={t.nav.universities} subtitle={U.subtitle} />
 
       <div className="mb-6 h-80 overflow-hidden rounded-2xl border border-line shadow-card sm:h-96">
         <UniMap universities={list} targetId={user.targetUniId} />
@@ -46,17 +50,17 @@ export default async function UniversitiesPage({ searchParams }: PageProps<"/uni
           {country && <input type="hidden" name="country" value={country} />}
           {sort !== "rank" && <input type="hidden" name="sort" value={sort} />}
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
-          <input name="q" defaultValue={q} placeholder="Search universities or cities…" className="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm shadow-card outline-none focus:border-brand" />
+          <input name="q" defaultValue={q} placeholder={U.search} className="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm shadow-card outline-none focus:border-brand" />
         </form>
         <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 shadow-card">
-          <Link href={`/universities${qs({ country: "" })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", !country ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}>All countries</Link>
+          <Link href={`/universities${qs({ country: "" })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", !country ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}>{U.allCountries}</Link>
           {countries.map((c) => (
-            <Link key={c} href={`/universities${qs({ country: c })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", country === c ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}>{c}</Link>
+            <Link key={c} href={`/universities${qs({ country: c })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", country === c ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2")}>{countryName(t, c)}</Link>
           ))}
         </div>
         <div className="flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-card lg:ml-auto">
-          {(Object.keys(SORTS) as (keyof typeof SORTS)[]).map((s) => (
-            <Link key={s} href={`/universities${qs({ sort: s === "rank" ? "" : s })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", sort === s ? "bg-surface-3 text-ink" : "text-ink-2 hover:bg-surface-2")}>{SORTS[s]}</Link>
+          {SORTS.map((s) => (
+            <Link key={s} href={`/universities${qs({ sort: s === "rank" ? "" : s })}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold", sort === s ? "bg-surface-3 text-ink" : "text-ink-2 hover:bg-surface-2")}>{U.sorts[s]}</Link>
           ))}
         </div>
       </div>
@@ -67,29 +71,29 @@ export default async function UniversitiesPage({ searchParams }: PageProps<"/uni
           return (
             <div key={u.id} className={cn("flex flex-col rounded-2xl border bg-surface p-5 shadow-card", isTarget ? "border-series-2 ring-4 ring-[color-mix(in_srgb,var(--series-2)_15%,transparent)]" : "border-line")}>
               <Link href={`/universities/${u.id}`} className="font-display text-[16px] font-bold text-ink hover:text-brand">{u.name}</Link>
-              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin className="size-3" /> {u.city}, {u.country}</div>
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin className="size-3" /> {u.city}, {countryName(t, u.country)}</div>
               <p className="mt-3 line-clamp-3 flex-1 text-sm text-ink-2">{u.about}</p>
               <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-xl bg-surface-2 p-2.5">
-                  <dt className="text-[11px] text-muted">Acceptance</dt>
+                  <dt className="text-[11px] text-muted">{U.acceptance}</dt>
                   <dd className="font-bold">{u.acceptanceRate !== null ? `${u.acceptanceRate}%` : "—"}</dd>
                 </div>
                 <div className="rounded-xl bg-surface-2 p-2.5">
-                  <dt className="text-[11px] text-muted">Tuition / yr</dt>
-                  <dd className="font-bold">{u.tuition !== null ? `$${u.tuition.toLocaleString()}` : "See website"}</dd>
+                  <dt className="text-[11px] text-muted">{U.tuitionYr}</dt>
+                  <dd className="font-bold">{u.tuition !== null ? `$${num(u.tuition)}` : U.seeWebsite}</dd>
                 </div>
               </dl>
               <form action={setDreamUniversity.bind(null, isTarget ? null : u.id)} className="mt-4">
-                <SubmitButton variant={isTarget ? "secondary" : "outline"} size="sm" className="w-full" pendingText="Saving…">
+                <SubmitButton variant={isTarget ? "secondary" : "outline"} size="sm" className="w-full">
                   <Heart className={cn("size-4", isTarget && "fill-current")} />
-                  {isTarget ? "Your dream university" : "Set as dream university"}
+                  {isTarget ? U.yourDream : U.setDream}
                 </SubmitButton>
               </form>
             </div>
           );
         })}
       </div>
-      <p className="mt-6 text-xs text-muted">Figures are approximate and change every year — always confirm on the university&apos;s website.</p>
+      <p className="mt-6 text-xs text-muted">{U.disclaimer}</p>
     </div>
   );
 }

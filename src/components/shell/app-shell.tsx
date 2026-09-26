@@ -25,12 +25,16 @@ import {
   X,
   ArrowLeftRight,
   Shapes,
+  KeyRound,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageMenu } from "@/components/language-menu";
+import { ThemeMenu } from "@/components/theme-menu";
 import { Avatar } from "@/components/ui/misc";
 import { PLATFORM_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dictionaries";
 import type { NavItem } from "./nav";
 
 const ICONS = {
@@ -49,19 +53,22 @@ const ICONS = {
   Settings,
   Building2,
   Shapes,
+  KeyRound,
 };
 
 export type ShellUser = {
   name: string;
   email: string;
   role: string;
+  /** Teachers' login ID, shown under their name. */
+  loginId?: string | null;
   streak: number;
   xp: number;
   centerName: string | null;
 };
 
 function isActive(pathname: string, href: string) {
-  if (href === "/admin" || href === "/platform" || href === "/dashboard") return pathname === href;
+  if (href === "/admin" || href === "/teacher" || href === "/platform" || href === "/dashboard") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -70,19 +77,23 @@ export function AppShell({
   user,
   accent,
   area,
-  switchLink,
+  switchLinks = [],
   logoutAction,
   children,
 }: {
   nav: NavItem[];
   user: ShellUser;
   accent?: string | null;
-  area: "student" | "admin" | "platform";
-  switchLink?: { href: string; label: string } | null;
+  area: "student" | "admin" | "teacher" | "platform";
+  /** Links to the user's other areas, e.g. the student view or the platform settings. */
+  switchLinks?: { href: string; label: keyof Dict["nav"] }[];
   logoutAction: () => Promise<void>;
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { t, num } = useI18n();
+  // Students manage their details on /profile; staff and the platform owner on "My account".
+  const accountHref = area === "student" ? "/profile" : `/${area}/account`;
   // The drawer remembers which page it was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
@@ -95,16 +106,17 @@ export function AppShell({
         <div className="min-w-0 leading-tight">
           <div className="font-display text-[16px] font-extrabold tracking-tight text-ink">{PLATFORM_NAME}</div>
           <div className="truncate text-[11px] font-semibold text-muted">
-            {area === "platform" ? "Platform admin" : (user.centerName ?? "")}
+            {area === "platform" ? t.shell.platformAdmin : (user.centerName ?? "")}
           </div>
         </div>
       </div>
-      {area === "admin" && (
-        <div className="mx-4 mb-2 rounded-lg bg-surface-2 px-3 py-1.5 text-[11px] font-bold tracking-wider text-muted uppercase">
-          {user.role === "CENTER_ADMIN" ? "Center admin" : "Teacher"} panel
+      {(area === "admin" || area === "teacher") && (
+        <div className="mx-4 mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-1.5 text-[11px] font-bold tracking-wider text-muted uppercase">
+          <span className="truncate">{area === "admin" ? t.shell.centerAdminPanel : t.shell.teacherPanel}</span>
+          {user.loginId && <span className="shrink-0 font-mono tracking-normal text-brand normal-case">{user.loginId}</span>}
         </div>
       )}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Main">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label={t.shell.mainNav}>
         {nav.map((item) => {
           const Icon = ICONS[item.icon as keyof typeof ICONS] ?? LayoutDashboard;
           const active = isActive(pathname, item.href);
@@ -114,12 +126,12 @@ export function AppShell({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold transition-colors",
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
                 active ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
               )}
             >
               <Icon className={cn("size-[18px] shrink-0", active ? "text-brand" : "text-muted group-hover:text-ink")} />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t.nav[item.label]}</span>
               {item.badge && (
                 <span className="ml-auto rounded-full bg-brand px-1.5 py-px text-[10px] font-bold text-white">{item.badge}</span>
               )}
@@ -128,31 +140,30 @@ export function AppShell({
         })}
       </nav>
       <div className="space-y-0.5 border-t border-line p-3">
-        {switchLink && (
+        {switchLinks.map((link) => (
           <Link
-            href={switchLink.href}
+            key={link.href}
+            href={link.href}
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
           >
             <ArrowLeftRight className="size-[18px] text-muted" />
-            {switchLink.label}
+            {t.nav[link.label]}
           </Link>
-        )}
-        {area === "student" && (
-          <Link
-            href="/profile"
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
-              isActive(pathname, "/profile") ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-            )}
-          >
-            <UserRound className="size-[18px] text-muted" />
-            Profile
-          </Link>
-        )}
+        ))}
+        <Link
+          href={accountHref}
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold",
+            isActive(pathname, accountHref) ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+          )}
+        >
+          <UserRound className="size-[18px] text-muted" />
+          {area === "student" ? t.nav.profile : t.nav.account}
+        </Link>
         <form action={logoutAction}>
           <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-danger">
             <LogOut className="size-[18px] text-muted" />
-            Log out
+            {t.nav.logOut}
           </button>
         </form>
       </div>
@@ -165,10 +176,10 @@ export function AppShell({
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-          <button aria-label="Close menu" className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <button aria-label={t.shell.closeMenu} data-no-press className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] animate-fade-up border-r border-line bg-surface shadow-pop">
             <button
-              aria-label="Close menu"
+              aria-label={t.shell.closeMenu}
               onClick={() => setOpen(false)}
               className="absolute top-4 right-3 grid size-8 place-items-center rounded-lg hover:bg-surface-2"
             >
@@ -182,7 +193,7 @@ export function AppShell({
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-[color-mix(in_srgb,var(--bg)_85%,transparent)] px-4 backdrop-blur-md sm:px-6">
           <button
-            aria-label="Open menu"
+            aria-label={t.shell.openMenu}
             onClick={() => setOpen(true)}
             className="grid size-9 place-items-center rounded-xl hover:bg-surface-2 lg:hidden"
           >
@@ -196,23 +207,24 @@ export function AppShell({
               <>
                 <div
                   className="flex items-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm font-bold tabular-nums"
-                  title="Day streak"
+                  title={t.shell.dayStreak}
                 >
                   <Flame className={cn("size-4", user.streak > 0 ? "text-orange-500" : "text-muted")} />
                   {user.streak}
                 </div>
                 <div
                   className="hidden items-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm font-bold tabular-nums sm:flex"
-                  title="Experience points"
+                  title={t.shell.xp}
                 >
                   <span className="text-[11px] font-extrabold text-brand">XP</span>
-                  {user.xp.toLocaleString()}
+                  {num(user.xp)}
                 </div>
               </>
             )}
-            <ThemeToggle />
+            <LanguageMenu />
+            <ThemeMenu />
             <Link
-              href={area === "student" ? "/profile" : "#"}
+              href={accountHref}
               className="flex items-center gap-2 rounded-xl py-1 pr-1 pl-1 hover:bg-surface-2 sm:pr-3"
             >
               <Avatar name={user.name} size={32} />

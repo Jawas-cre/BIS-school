@@ -109,6 +109,63 @@ body {
   outline-offset: 2px;
 }
 
+/* ─── Smooth taps ────────────────────────────────────────────────────────────
+   Everything tappable eases down a little when pressed and glides back when
+   released (press-feedback.tsx sets data-press and --press-scale). Unlayered
+   on purpose: during a press it wraps whatever transitions the element has. */
+:where(button, [role="button"], a, summary, label) {
+  -webkit-tap-highlight-color: transparent;
+}
+:where(button, [role="button"]) {
+  touch-action: manipulation;
+}
+[data-press] {
+  transition:
+    scale 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    opacity 200ms ease;
+}
+[data-press="down"] {
+  scale: var(--press-scale, 0.97);
+  transition:
+    scale 140ms cubic-bezier(0.3, 0, 0.2, 1),
+    color 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    opacity 200ms ease;
+}
+
+@layer base {
+  /* Hover and focus colors fade in instead of switching instantly. */
+  :where(a, button, [role="button"], summary, label, input, select, textarea) {
+    transition-property: color, background-color, border-color, outline-color, box-shadow, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+  }
+}
+
+/* ─── Light/dark switch ───────────────────────────────────────────────────────
+   The new colors spread as a circle from the color-mode button in the top
+   corner until they reach the far corner (theme-menu.tsx animates the circle).
+   Browsers without view transitions fade the colors instead. */
+:root[data-theme-reveal]::view-transition-old(root),
+:root[data-theme-reveal]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html.theme-fading,
+html.theme-fading *,
+html.theme-fading *::before,
+html.theme-fading *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
+  transition-duration: 0.45s !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 /* Scrollbars that respect the theme */
 * {
   scrollbar-width: thin;

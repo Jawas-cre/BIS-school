@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireStudentArea } from "@/lib/auth";
+import { pageTitle } from "@/lib/i18n/server";
 import { AssistantShell } from "../shell";
 
-export const metadata: Metadata = { title: "AI Assistant" };
+export const generateMetadata = pageTitle((t) => t.nav.assistant);
 
 export default async function ConversationPage({ params }: PageProps<"/assistant/[id]">) {
   const user = await requireStudentArea();

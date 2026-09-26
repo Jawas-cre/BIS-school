@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertCircle, ChevronRight, Clock, Flag, ListChecks } from "lucide-react";
@@ -6,12 +5,16 @@ import { db } from "@/lib/db";
 import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { startTest } from "../actions";
+import { fmt, plural, rich } from "@/lib/i18n/format";
+import { getT, pageTitle } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Start test" };
+export const generateMetadata = pageTitle((t) => t.tests.startTest);
 
 export default async function TestIntroPage({ params }: PageProps<"/tests/[testId]">) {
   const user = await requireStudentArea();
   const { testId } = await params;
+  const t = await getT();
+  const T = t.tests;
   const test = await db.test.findFirst({
     where: { id: testId, published: true, ...visibleTo(user.centerId) },
     include: { subject: true, modules: { orderBy: { order: "asc" }, include: { _count: { select: { questions: true } } } } },
@@ -24,7 +27,7 @@ export default async function TestIntroPage({ params }: PageProps<"/tests/[testI
     <div className="mx-auto max-w-3xl">
       <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted">
         <Link href="/tests" className="hover:text-ink">
-          Mock Tests
+          {t.nav.tests}
         </Link>
         <ChevronRight className="size-3.5" />
         <span className="truncate">{test.title}</span>
@@ -41,7 +44,7 @@ export default async function TestIntroPage({ params }: PageProps<"/tests/[testI
                 <span className="grid size-8 place-items-center rounded-full bg-surface text-sm font-bold text-ink-2">{i + 1}</span>
                 <span className="flex-1 font-semibold">{m.title}</span>
                 <span className="text-sm text-muted tabular-nums">
-                  {m._count.questions} q · {m.minutes} min
+                  {fmt(T.moduleInfo, { q: m._count.questions, min: m.minutes })}
                 </span>
               </div>
             </li>
@@ -52,30 +55,30 @@ export default async function TestIntroPage({ params }: PageProps<"/tests/[testI
           <div className="flex gap-3">
             <Clock className="mt-0.5 size-4 shrink-0 text-brand" />
             <span>
-              <strong>{minutes} minutes</strong> in total. Each module has its own timer; when it ends, the module is submitted automatically.
+              {rich(T.totalTime, { minutes: <strong>{plural(t.common.minutes, minutes)}</strong> })}
             </span>
           </div>
           <div className="flex gap-3">
             <Flag className="mt-0.5 size-4 shrink-0 text-brand" />
             <span>
-              <strong>Mark for review</strong> and jump between questions freely within a module. You can&apos;t return to a module after submitting it.
+              {rich(T.markReviewText, { mark: <strong>{T.markForReview}</strong> })}
             </span>
           </div>
           <div className="flex gap-3">
             <ListChecks className="mt-0.5 size-4 shrink-0 text-brand" />
-            <span>Wrong answers don&apos;t lose points — answer every question.</span>
+            <span>{T.noPenalty}</span>
           </div>
         </div>
 
         {open && (
           <p className="mt-6 flex items-center gap-2 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning">
-            <AlertCircle className="size-4" /> You have an unfinished attempt. Starting will resume it.
+            <AlertCircle className="size-4" /> {T.unfinished}
           </p>
         )}
 
         <form action={startTest.bind(null, test.id)} className="mt-8">
-          <SubmitButton size="lg" className="w-full sm:w-auto" pendingText="Preparing your test…">
-            {open ? "Resume test" : "Start test"}
+          <SubmitButton size="lg" className="w-full sm:w-auto" pendingText={T.preparing}>
+            {open ? T.resumeTest : T.startTest}
           </SubmitButton>
         </form>
       </div>

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpenCheck, CalendarDays, ClipboardCheck, Clock, Languages, Map, Pin, Target, Users } from "lucide-react";
 import { db } from "@/lib/db";
@@ -7,7 +6,11 @@ import { liveStreak } from "@/lib/activity";
 import { activityCalendar, subjectComparison, userTotals } from "@/lib/stats";
 import { roadmapOverview } from "@/lib/roadmap";
 import { enrolledSubjectIds, visibleSubjects } from "@/lib/subjects";
-import { daysUntil, formatDate, pct, timeAgo } from "@/lib/utils";
+import { daysUntil, pct } from "@/lib/utils";
+import { fmt, rich } from "@/lib/i18n/format";
+import { getI18n, pageTitle } from "@/lib/i18n/server";
+import type { Dict } from "@/lib/i18n/dictionaries";
+import { countryName, newsTag } from "@/lib/i18n/labels";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Progress, StatTile } from "@/components/ui/misc";
@@ -17,15 +20,17 @@ import { ScoreTrend } from "@/components/charts/score-trend";
 import { SubjectBars } from "@/components/charts/subject-bars";
 import { ActivityHeatmap } from "@/components/charts/activity-heatmap";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const generateMetadata = pageTitle((t) => t.nav.dashboard);
 
-function greeting() {
+function greeting(t: Dict) {
   const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: "Asia/Tashkent" }).format(new Date()));
-  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return hour < 12 ? t.dashboard.morning : hour < 18 ? t.dashboard.afternoon : t.dashboard.evening;
 }
 
 export default async function DashboardPage() {
   const user = await requireStudentArea();
+  const { t, num, date, ago } = await getI18n();
+  const D = t.dashboard;
   const subjects = await visibleSubjects(user.centerId);
   const enrolled = enrolledSubjectIds(user);
   // Subjects shown on the dashboard: the student's groups, or every subject if they have none yet.
@@ -66,39 +71,39 @@ export default async function DashboardPage() {
               {user.grade ? ` · ${user.grade}` : ""}
             </p>
             <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-              {greeting()}, {user.name.split(" ")[0]}
+              {fmt(D.greeting, { greeting: greeting(t), name: user.name.split(" ")[0] })}
             </h1>
             <p className="mt-2 max-w-xl text-white/85">
               {latest
-                ? `Your last test — ${latest.test.title} — scored ${latest.score}%. ${user.goal ? `Keep going: ${user.goal}.` : "Keep up the momentum."}`
+                ? `${fmt(D.lastTest, { title: latest.test.title, score: latest.score ?? 0 })} ${user.goal ? fmt(D.keepGoingGoal, { goal: user.goal }) : D.keepMomentum}`
                 : user.goal
-                  ? `Your goal: ${user.goal}. Start with the roadmap or a practice test.`
-                  : "Start with the roadmap or take a practice test to see where you stand."}
+                  ? fmt(D.yourGoal, { goal: user.goal })
+                  : D.startHint}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {next?.next && nextSubject ? (
-                <ButtonLink href={`/roadmap/${next.next.id}`} className="bg-white text-brand hover:bg-white/90">
-                  <Map className="size-4" /> Continue {nextSubject.name}: {next.next.title}
+                <ButtonLink href={`/roadmap/${next.next.id}`} className="max-w-full bg-white text-brand hover:bg-white/90">
+                  <Map className="size-4 shrink-0" /> <span className="truncate">{fmt(D.continueSubject, { subject: nextSubject.name, unit: next.next.title })}</span>
                 </ButtonLink>
               ) : (
                 <ButtonLink href="/roadmap" className="bg-white text-brand hover:bg-white/90">
-                  <Map className="size-4" /> Open roadmap
+                  <Map className="size-4" /> {D.openRoadmap}
                 </ButtonLink>
               )}
               <ButtonLink href="/tests" variant="ghost" className="bg-white/10 text-white hover:bg-white/20 hover:text-white">
-                <ClipboardCheck className="size-4" /> Take a test
+                <ClipboardCheck className="size-4" /> {D.takeTest}
               </ButtonLink>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
-              { label: "Average test", value: totals.avgTestScore !== null ? `${totals.avgTestScore}%` : "—" },
-              { label: "Streak", value: `${liveStreak(user)}d` },
-              { label: days !== null && days >= 0 ? "Days to exam" : "Tests taken", value: days !== null && days >= 0 ? days : totals.tests },
+              { label: D.avgTest, value: totals.avgTestScore !== null ? `${totals.avgTestScore}%` : "—" },
+              { label: D.streak, value: fmt(D.streakDays, { n: liveStreak(user) }) },
+              { label: days !== null && days >= 0 ? D.daysToExam : D.testsTaken, value: days !== null && days >= 0 ? days : totals.tests },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl bg-white/12 px-4 py-3 ring-1 ring-white/15 backdrop-blur-sm">
+              <div key={s.label} className="rounded-2xl bg-white/12 px-3 py-3 ring-1 ring-white/15 backdrop-blur-sm sm:px-4">
                 <div className="text-[11px] font-semibold text-white/70">{s.label}</div>
-                <div className="font-display text-2xl font-extrabold">{s.value}</div>
+                <div className="font-display text-xl font-extrabold whitespace-nowrap sm:text-2xl">{s.value}</div>
               </div>
             ))}
           </div>
@@ -106,17 +111,17 @@ export default async function DashboardPage() {
       </section>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Questions answered" value={totals.answered.toLocaleString()} hint={`${totals.distinct} unique questions`} icon={<BookOpenCheck className="size-4" />} />
-        <StatTile label="Accuracy" value={totals.answered ? `${totals.accuracy}%` : "—"} hint="Across all practice" icon={<Target className="size-4" />} />
-        <StatTile label="Tests completed" value={totals.tests} hint={totals.avgTestScore !== null ? `Average ${totals.avgTestScore}%` : "No tests yet"} icon={<ClipboardCheck className="size-4" />} />
-        <StatTile label="Words mastered" value={totals.mastered} hint={`${totals.units} roadmap units done`} icon={<Languages className="size-4" />} />
+        <StatTile label={D.questionsAnswered} value={num(totals.answered)} hint={fmt(D.uniqueQuestions, { n: totals.distinct })} icon={<BookOpenCheck className="size-4" />} />
+        <StatTile label={D.accuracy} value={totals.answered ? `${totals.accuracy}%` : "—"} hint={D.acrossPractice} icon={<Target className="size-4" />} />
+        <StatTile label={D.testsCompleted} value={totals.tests} hint={totals.avgTestScore !== null ? fmt(D.average, { pct: totals.avgTestScore }) : D.noTestsYet} icon={<ClipboardCheck className="size-4" />} />
+        <StatTile label={D.wordsMastered} value={totals.mastered} hint={fmt(D.unitsDone, { n: totals.units })} icon={<Languages className="size-4" />} />
       </div>
 
       {/* Subjects */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">{enrolled.length ? "My subjects" : "Subjects"}</h2>
-          <Link href="/roadmap" className="text-sm font-semibold text-brand hover:underline">Roadmap</Link>
+          <h2 className="font-display text-lg font-bold">{enrolled.length ? D.mySubjects : D.subjects}</h2>
+          <Link href="/roadmap" className="text-sm font-semibold text-brand hover:underline">{t.nav.roadmap}</Link>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {mySubjects.map((s) => {
@@ -134,8 +139,8 @@ export default async function DashboardPage() {
                   {c?.you !== null && c?.you !== undefined && <Badge tone={c.you >= 75 ? "success" : c.you >= 55 ? "warning" : "danger"}>{c.you}%</Badge>}
                 </div>
                 <div className="mt-4 flex items-center justify-between text-xs text-muted">
-                  <span>Roadmap {o?.done ?? 0}/{o?.total ?? 0}</span>
-                  <span className="truncate pl-2">{o?.next ? `Next: ${o.next.title}` : o?.total ? "Complete 🎉" : ""}</span>
+                  <span>{fmt(D.roadmapProgress, { done: o?.done ?? 0, total: o?.total ?? 0 })}</span>
+                  <span className="truncate pl-2">{o?.next ? fmt(D.nextUnit, { title: o.next.title }) : o?.total ? D.complete : ""}</span>
                 </div>
                 <Progress value={pct(o?.done ?? 0, o?.total ?? 0)} className="mt-1.5" />
               </Link>
@@ -148,9 +153,9 @@ export default async function DashboardPage() {
         <div className="xl:col-span-2">
           <ScoreTrend
             data={attempts.map((a) => ({
-              label: formatDate(a.finishedAt ?? a.startedAt, { year: undefined }),
+              label: date(a.finishedAt ?? a.startedAt, { year: undefined }),
               title: a.test.title,
-              subject: a.test.subject?.name ?? "Mixed",
+              subject: a.test.subject?.name ?? t.common.mixed,
               score: a.score ?? 0,
             }))}
           />
@@ -158,7 +163,7 @@ export default async function DashboardPage() {
         <Card className="flex flex-col">
           {user.memberships.length > 0 ? (
             <>
-              <CardHeader title="My groups" action={<Users className="size-4 text-muted" />} />
+              <CardHeader title={D.myGroups} action={<Users className="size-4 text-muted" />} />
               <CardBody className="space-y-3">
                 {user.memberships.map((m) => (
                   <div key={m.groupId} className="rounded-xl border border-line p-3">
@@ -168,7 +173,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                       {m.group.schedule && <span className="flex items-center gap-1"><Clock className="size-3" /> {m.group.schedule}</span>}
-                      {m.group.teacher && <span>Teacher: {m.group.teacher.name}</span>}
+                      {m.group.teacher && <span>{fmt(D.teacher, { name: m.group.teacher.name })}</span>}
                     </div>
                   </div>
                 ))}
@@ -176,13 +181,13 @@ export default async function DashboardPage() {
             </>
           ) : (
             <>
-              <CardHeader title="Join a group" />
-              <CardBody className="text-sm text-muted">Your teacher will add you to a group for each subject you study. Until then you can practise every subject.</CardBody>
+              <CardHeader title={D.joinGroup} />
+              <CardBody className="text-sm text-muted">{D.joinGroupText}</CardBody>
             </>
           )}
           {user.examDate && (
             <div className="mt-auto flex items-center gap-2 border-t border-line px-5 py-4 text-sm text-ink-2">
-              <CalendarDays className="size-4 text-muted" /> Exam on <strong>{formatDate(user.examDate, { weekday: "short" })}</strong>
+              <CalendarDays className="size-4 text-muted" /> {rich(D.examOn, { date: <strong>{date(user.examDate, { weekday: "short" })}</strong> })}
             </div>
           )}
         </Card>
@@ -194,7 +199,7 @@ export default async function DashboardPage() {
         </div>
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Dream university" subtitle={uni ? `${uni.city}, ${uni.country}` : "Set a target to stay motivated"} />
+            <CardHeader title={D.dreamUni} subtitle={uni ? `${uni.city}, ${countryName(t, uni.country)}` : D.setTarget} />
             <CardBody>
               {uni ? (
                 <>
@@ -203,20 +208,20 @@ export default async function DashboardPage() {
                 </>
               ) : (
                 <ButtonLink href="/universities" variant="secondary" size="sm">
-                  Explore universities <ArrowRight className="size-4" />
+                  {D.exploreUnis} <ArrowRight className="size-4" />
                 </ButtonLink>
               )}
             </CardBody>
           </Card>
           <Card>
-            <CardHeader title="What's new" action={<Link href="/news" className="text-sm font-semibold text-brand hover:underline">All</Link>} />
+            <CardHeader title={t.nav.news} action={<Link href="/news" className="text-sm font-semibold text-brand hover:underline">{t.common.all}</Link>} />
             <CardBody className="space-y-4">
               {news.map((n) => (
                 <Link key={n.id} href={`/news#${n.id}`} className="group block">
                   <div className="flex items-center gap-2">
                     {n.pinned && <Pin className="size-3.5 text-brand" />}
-                    <Badge tone={n.centerId ? "brand" : "neutral"}>{n.tag}</Badge>
-                    <span className="text-xs text-muted">{timeAgo(n.createdAt)}</span>
+                    <Badge tone={n.centerId ? "brand" : "neutral"}>{newsTag(t, n.tag)}</Badge>
+                    <span className="text-xs text-muted">{ago(n.createdAt)}</span>
                   </div>
                   <div className="mt-1 font-semibold text-ink group-hover:text-brand">{n.title}</div>
                 </Link>

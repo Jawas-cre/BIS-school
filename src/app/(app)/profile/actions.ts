@@ -5,14 +5,16 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
 
 export type ProfileState = { error?: string; ok?: string } | null;
 
 export async function updateProfile(_: ProfileState, formData: FormData): Promise<ProfileState> {
   const user = await requireUser();
+  const t = await getT();
   const parsed = z
     .object({
-      name: z.string().trim().min(2, "Enter your full name").max(80),
+      name: z.string().trim().min(2, t.validation.fullName).max(80),
       phone: z.string().trim().max(30).optional(),
       grade: z.string().trim().max(40).optional(),
       goal: z.string().trim().max(160).optional(),
@@ -35,15 +37,17 @@ export async function updateProfile(_: ProfileState, formData: FormData): Promis
     },
   });
   revalidatePath("/", "layout");
-  return { ok: "Profile saved" };
+  return { ok: t.profile.saved };
 }
 
 export async function changePassword(_: ProfileState, formData: FormData): Promise<ProfileState> {
   const user = await requireUser();
+  const t = await getT();
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
-  if (next.length < 8) return { error: "New password must be at least 8 characters" };
-  if (!(await bcrypt.compare(current, user.passwordHash))) return { error: "Current password is incorrect" };
+  if (next.length < 8) return { error: t.validation.passwordMin };
+  if (formData.has("confirm") && formData.get("confirm") !== next) return { error: t.validation.passwordsDiffer };
+  if (!(await bcrypt.compare(current, user.passwordHash))) return { error: t.profile.currentIncorrect };
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(next, 10) } });
-  return { ok: "Password changed" };
+  return { ok: t.profile.passwordChanged };
 }
