@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getCurrentUser, homeFor } from "@/lib/auth";
+import { centerSignupOpen } from "@/lib/signup";
 import { db } from "@/lib/db";
 import { PLATFORM_NAME } from "@/lib/brand";
 import { Logo } from "@/components/logo";
@@ -32,10 +33,11 @@ export default async function Home() {
   if (!user && (await db.user.count()) === 0) redirect("/setup");
   const { t, num } = await getI18n();
   const L = t.landing;
-  const [subjects, questions, tests] = await Promise.all([
+  const [subjects, questions, tests, signupOpen] = await Promise.all([
     db.subject.findMany({ where: { centerId: null }, orderBy: { order: "asc" } }),
     db.question.count({ where: { centerId: null } }),
     db.test.count({ where: { centerId: null } }),
+    centerSignupOpen(),
   ]);
 
   return (
@@ -79,7 +81,7 @@ export default async function Home() {
               ) : (
                 <>
                   <ButtonLink href="/register" size="lg">{L.imStudent}</ButtonLink>
-                  <ButtonLink href="/register/center" size="lg" variant="outline">{L.runCenter}</ButtonLink>
+                  {signupOpen && <ButtonLink href="/register/center" size="lg" variant="outline">{L.runCenter}</ButtonLink>}
                 </>
               )}
             </div>
@@ -131,9 +133,11 @@ export default async function Home() {
               <p className="text-sm font-bold tracking-wider text-brand uppercase">{L.centersEyebrow}</p>
               <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight">{L.centersTitle}</h2>
               <p className="mt-3 text-muted">{L.centersText}</p>
-              <ButtonLink href="/register/center" className="mt-6">
-                {L.createCenter} <ArrowRight className="size-4" />
-              </ButtonLink>
+              {signupOpen && (
+                <ButtonLink href="/register/center" className="mt-6">
+                  {L.createCenter} <ArrowRight className="size-4" />
+                </ButtonLink>
+              )}
             </div>
             <ol className="space-y-3">
               {L.steps.map((s, i) => {

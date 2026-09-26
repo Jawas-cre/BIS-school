@@ -8,6 +8,7 @@ import { createSession, deleteSession } from "@/lib/session";
 import { homeFor } from "@/lib/auth";
 import { resolveInvite, consumeInvite } from "@/lib/invites";
 import { ensureTeacherId, looksLikeTeacherId, normalizeTeacherId } from "@/lib/teacher-id";
+import { centerSignupOpen } from "@/lib/signup";
 import { randomCode, slugify } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import { getT } from "@/lib/i18n/server";
@@ -128,6 +129,7 @@ async function createCenterWithAdmin(t: Dict, d: { centerName: string; city?: st
 
 export async function registerCenter(_: FormState, formData: FormData): Promise<FormState> {
   const t = await getT();
+  if (!(await centerSignupOpen())) return { error: t.auth.centerSignupClosedText };
   const parsed = z.object(centerFields(t)).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (await db.user.findUnique({ where: { email: parsed.data.email } })) {
