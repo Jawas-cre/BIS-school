@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Field, FormMessage, Input, Select, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Markdown } from "@/components/markdown";
-import type { ActionState } from "@/components/action-form";
+import { keepValues, type ActionState } from "@/components/action-form";
 import { useT } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n/format";
 
@@ -22,7 +22,7 @@ export function QuestionForm({ action, subjects, initial }: { action: (s: Action
   const Q = t.adminQuestions;
 
   return (
-    <form action={formAction} className="grid gap-6 xl:grid-cols-2">
+    <form action={formAction} onSubmit={keepValues(formAction)} className="grid gap-6 xl:grid-cols-2">
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.adminSubjects.subject}>

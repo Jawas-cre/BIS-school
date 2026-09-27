@@ -26,6 +26,11 @@ model Center {
   accent     String   @default("#2563eb") // brand color used across the center's UI
   inviteCode String   @unique // general student code; InviteCode rows hold extra student and teacher codes
   createdAt  DateTime @default(now())
+  heroTitle  String? // website headline; the center's name is used when empty
+  heroText   String? // website intro text
+  phone      String?
+  telegram   String? // username or link
+  instagram  String? // username or link
 
   branches    Branch[]
   inviteCodes InviteCode[]
@@ -38,6 +43,8 @@ model Center {
   vocabDecks  VocabDeck[]
   library     LibraryItem[]
   news        NewsPost[]
+  siteItems   SiteItem[]
+  leads       Lead[]
 }
 
 model Branch {
@@ -172,6 +179,8 @@ model User {
   bestStreak   Int       @default(0)
   lastActiveOn String? // YYYY-MM-DD of last practice, used for streaks
   createdAt    DateTime  @default(now())
+  bio          String? // a teacher's short line on the center website, e.g. "IELTS 8.5 · 6 years teaching"
+  onSite       Boolean   @default(true) // a teacher listed on the center website
 
   center        Center?           @relation(fields: [centerId], references: [id], onDelete: Cascade)
   branch        Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
@@ -557,4 +566,43 @@ model Assignment {
   topic Topic?       @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([groupId])
+}
+
+// Content of a center's public website, in the admin's order. What the fields hold depends on kind:
+// COURSE — title: course name, subtitle: price, meta: length or level, body: description;
+// RESULT — title: student name, subtitle: result (e.g. "IELTS 8.0"), body: university or note;
+// FAQ    — title: question, body: answer.
+model SiteItem {
+  id        String   @id @default(cuid())
+  centerId  String
+  kind      String
+  title     String
+  subtitle  String?
+  meta      String?
+  body      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, kind])
+}
+
+// A request for a free trial lesson sent from a center's website.
+model Lead {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String
+  phone     String
+  course    String?
+  branch    String?
+  time      String? // when it suits them
+  message   String?
+  status    String   @default("NEW") // NEW | CONTACTED | ENROLLED | CLOSED
+  note      String? // the admin's note
+  createdAt DateTime @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, status])
 }

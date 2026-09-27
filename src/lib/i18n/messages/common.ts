@@ -134,6 +134,8 @@ export const nav = defineMessages({
     aiTutor: "AI tutor",
     journal: "Journal",
     assignments: "Assignments",
+    website: "Website",
+    leads: "Applications",
   },
   uz: {
     dashboard: "Bosh sahifa",
@@ -169,6 +171,8 @@ export const nav = defineMessages({
     aiTutor: "AI yordamchi",
     journal: "Jurnal",
     assignments: "Topshiriqlar",
+    website: "Veb-sayt",
+    leads: "Arizalar",
   },
 });
 

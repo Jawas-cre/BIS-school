@@ -12,9 +12,12 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser, homeFor } from "@/lib/auth";
 import { centerSignupOpen } from "@/lib/signup";
+import { ownerCenter } from "@/lib/site";
+import { CenterSite } from "@/components/site/center-site";
 import { db } from "@/lib/db";
 import { PLATFORM_NAME } from "@/lib/brand";
 import { Logo } from "@/components/logo";
@@ -28,9 +31,17 @@ import { SubjectIcon } from "@/components/subject-icon";
 const FEATURE_ICONS = [ListChecks, ClipboardCheck, Map, Languages, Library, GraduationCap, Sparkles, BarChart3];
 const STEP_ICONS = [Building2, KeyRound, Users];
 
+export async function generateMetadata(): Promise<Metadata> {
+  const own = await ownerCenter();
+  return own ? { title: { absolute: own.name }, description: own.heroText || own.about || undefined } : {};
+}
+
 export default async function Home() {
   const user = await getCurrentUser();
   if (!user && (await db.user.count()) === 0) redirect("/setup");
+  // A copy that belongs to one center (it has an owner) shows that center's own website here.
+  const own = await ownerCenter();
+  if (own) return <CenterSite centerId={own.id} />;
   const { t, num } = await getI18n();
   const L = t.landing;
   const [subjects, questions, tests, signupOpen] = await Promise.all([

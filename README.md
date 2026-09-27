@@ -23,21 +23,35 @@ student gets the same toolkit for every subject they study.
 - **Library** — books, guides, courses and videos tagged by subject; filter by type and search.
 - **Top Universities** — interactive map with requirements, acceptance rates, tuition and aid; set
   your dream university.
+- **Assignments** — homework from teachers (a test, a roadmap unit or practice questions on a topic)
+  with a due day; it ticks itself off when the student does the work. The menu shows how many are open.
+- **Journal** — attendance (present, late, absent, excused) and grades (1–5) from every lesson.
+- **Mastery** — Khan Academy–style levels per topic (Not started → Attempted → Familiar → Proficient →
+  Mastered) from the latest 10 answers, shown in the Question Bank and as "% mastery" on the dashboard.
 - **What's New** — center and platform announcements.
-- **AI Assistant** — streaming tutor powered by Claude that knows the student's subjects, goal and
-  weakest topics; saved conversations; "Ask AI" from any explanation; daily message limit.
+- **AI Assistant** — streaming tutor that knows the student's subjects, goal and weakest topics; saved
+  conversations; "Ask AI" from any explanation; daily message limit. Runs on Claude with an API key,
+  or free through [OmniRoute](https://github.com/diegosouzapw/OmniRoute) (see *Free AI tutor* below).
 - **Profile** — grade, goal, exam date, dream university, password; streaks and XP.
 
 ### For center admins — admin panel (`/admin`)
 - **Overview**: invite code, active students, average test scores, score distribution, students who
   need attention, group table, latest results.
+- **Applications**: free trial lesson requests from the center's website — call back from the list,
+  mark each as new, contacted, enrolled or closed, add a note, and create the student's account in one
+  click. The menu shows how many new ones are waiting.
+- **Website**: edit the center's public website — headline, introduction, phone, Telegram and
+  Instagram, courses with prices, student results, questions and answers, and a short introduction
+  for each teacher. Branches come from Center settings.
 - **Invite codes**: student codes (optionally joining a group) and teacher codes with use limits,
   expiry dates and on/off switches.
 - **My account**: name, login email and password.
 - **Students**: searchable list filtered by group, with groups, average test score, accuracy, weekly
   activity and streak; per-student analytics (score trend, accuracy by subject, roadmap, activity,
   test history); create accounts, assign to several groups, reset passwords.
-- **Groups**: subject, teacher, branch, schedule, members and roadmap unlocks per group.
+- **Groups**: subject, teacher, branch, schedule, members and roadmap unlocks per group; the lesson
+  **journal** (attendance and grades for any day), **assignments** with due days and who has done
+  them, and the class **mastery** grid (every student × every topic).
 - **Subjects**: add your own subjects (name, icon, color) and topics on top of the platform subjects.
 - **Content**: questions, test builder (random picks from the bank by subject / topic / difficulty),
   per-subject roadmap with video lessons, vocabulary decks, library resources, announcements.
@@ -49,12 +63,24 @@ student gets the same toolkit for every subject they study.
   It is shown in their panel, on *My account* and to admins on the Staff page.
 - **My classes** (overview), **My groups** and **My students**: only the groups they teach and the
   students in them — analytics, members, and unlocking roadmap units for the whole group.
+- For each of their groups: the lesson journal (attendance and grades), assignments with due days, and
+  the class mastery grid.
 - The center's learning content: questions, tests, roadmap lessons, vocabulary, library and
   announcements.
 
 ### For the owner and the platform admin — `/platform`
-Centers overview, universities, and platform-wide announcements. The person who installs BIS Learn on
-a computer is its **owner**: a center admin who can also open these platform settings.
+Centers overview, universities, platform-wide announcements, and the **AI tutor** settings (Claude
+with an API key, OmniRoute for free, or off — with a *Test connection* button). The person who
+installs BIS Learn on a computer is its **owner**: a center admin who can also open these platform
+settings.
+
+### The center's website
+Every center has a public website at `/c/<center>` (for the demo: `/c/bright-future`), and on a copy
+set up with the start-here file (it has an owner) it is also the **home page**. Visitors need no
+account. It shows the headline, the center's numbers (students, teachers, courses, branches), courses
+with prices, why study here, teachers with their subjects, student results, branches with map and
+phone links, questions and answers, and a **free trial lesson** form — requests land in the admin
+panel under *Applications*. It uses the center's accent color, English/Uzbek and light/dark mode.
 
 Platform content (subjects, questions, tests, roadmaps, decks, library) is shared with every center;
 anything a center creates is visible only to that center.
@@ -63,9 +89,10 @@ anything a center creates is visible only to that center.
 
 | Area | Student | Teacher | Center admin | Owner (installed the site) | Platform admin |
 |---|---|---|---|---|---|
+| Center website (`/c/<center>`; `/` on your own copy) — also for visitors without an account | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Student app (`/dashboard`, …) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Teacher panel (`/teacher`) — own groups and students, content | — | ✓ | — | — | — |
-| Admin panel (`/admin`) — everything in the center | — | — | ✓ | ✓ | — |
+| Admin panel (`/admin`) — everything in the center, including Applications and Website | — | — | ✓ | ✓ | — |
 | Platform settings (`/platform`) | — | — | — | ✓ | ✓ |
 
 Students who sign up only ever see the student app; opening a panel's address sends them back to
@@ -88,7 +115,8 @@ Every page and server action checks the role on the server, so hiding a link is 
 - Prisma ORM (SQLite locally; PostgreSQL recommended in production)
 - Cookie sessions signed with `jose`, passwords hashed with `bcryptjs`
 - Recharts, Leaflet / OpenStreetMap, react-markdown + KaTeX
-- `@anthropic-ai/sdk` for the AI Assistant
+- `@anthropic-ai/sdk` for the AI Assistant — Claude directly, or any Anthropic-compatible gateway such
+  as OmniRoute
 
 ## Run it on your laptop
 
@@ -129,6 +157,22 @@ While the site runs on the computer, phones and tablets on the **same Wi-Fi** ca
 
 The computer has to stay on with the start-here window open. Phones on other networks (mobile data,
 students at home) can't reach it — for that the site has to be online; see *Deploying* below.
+
+### Free AI tutor with OmniRoute
+
+[OmniRoute](https://github.com/diegosouzapw/OmniRoute) (MIT license) is a free, open-source AI gateway
+that runs on your computer and passes questions on to free AI models. BIS Learn can use it instead of
+a paid Claude API key:
+
+1. In a terminal (Windows: `Win + R`, type `cmd`, Enter): `npm install -g omniroute`, then start it
+   with `omniroute` and keep that window open. Optionally open **http://localhost:20128**, its
+   dashboard, to add more free AI providers.
+2. In BIS Learn: *Platform settings → AI tutor* → choose **OmniRoute (free)** → **Save** → **Test
+   connection**. The address (`http://localhost:20128`) and the model (`auto`, which lets OmniRoute
+   pick a free model) are filled in; add an API key only if you created one in OmniRoute.
+
+Keep OmniRoute running while students use the AI Assistant. With a Claude API key instead, choose
+**Claude** on the same page (or put `ANTHROPIC_API_KEY` in `.env`).
 
 ### Automatic updates — no new zip needed
 
@@ -215,7 +259,7 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 |---|---|---|
 | `DATABASE_URL` | yes | `file:./dev.db` for SQLite, or a PostgreSQL URL |
 | `SESSION_SECRET` | yes | 32+ random characters used to sign session cookies |
-| `ANTHROPIC_API_KEY` | for AI | Enables the AI Assistant |
+| `ANTHROPIC_API_KEY` | for AI | Enables the AI Assistant with Claude (or set a key or OmniRoute under *Platform settings → AI tutor*) |
 | `ANTHROPIC_MODEL` | no | Defaults to `claude-opus-5` |
 | `AI_DAILY_LIMIT` | no | Messages per student per day (default 60) |
 | `BIS_UPDATES` | no | `off` stops automatic updates of zip copies (default on) |
@@ -254,14 +298,16 @@ prisma/
 src/
   app/(auth)/            login, student and center registration
   app/onboarding/        grade, goal and group setup after sign-up
-  app/(app)/             student area (dashboard, roadmap, questions, tests, vocabulary, …)
+  app/(app)/             student area (dashboard, assignments, journal, roadmap, questions, tests, …)
+  app/c/                 each center's public website and its trial lesson form
   app/(exam)/            distraction-free test runner
   app/admin/             center admin panel (its staff pages are shared with the teacher panel)
   app/teacher/           teacher panel: layout plus re-exports of the shared staff pages
-  app/platform/          platform settings (platform admin and the owner)
+  app/platform/          platform settings (platform admin and the owner), including the AI tutor
   app/api/assistant/     streaming AI tutor endpoint
   components/            UI kit, charts, app shell
-  lib/                   auth/session, subjects, quiz grading, stats, tests, AI config
+  lib/                   auth/session, subjects, quiz grading, stats, tests, journal, assignments,
+                         mastery, website, AI settings
   lib/i18n/              English / Uzbek text (messages/*.ts), language cookie, formatters
   proxy.ts               optimistic auth redirect
 scripts/

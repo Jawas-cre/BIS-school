@@ -18,6 +18,7 @@ export const STUDENT_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "overview", icon: "LayoutDashboard" },
+  { href: "/admin/leads", label: "leads", icon: "Inbox" },
   { href: "/admin/students", label: "students", icon: "Users" },
   { href: "/admin/codes", label: "codes", icon: "KeyRound" },
   { href: "/admin/groups", label: "groups", icon: "Layers" },
@@ -29,6 +30,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/library", label: "library", icon: "Library" },
   { href: "/admin/news", label: "announcements", icon: "Megaphone" },
   { href: "/admin/staff", label: "staff", icon: "ShieldCheck" },
+  { href: "/admin/website", label: "website", icon: "Globe" },
   { href: "/admin/settings", label: "settings", icon: "Settings" },
 ];
 
