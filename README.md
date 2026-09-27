@@ -282,6 +282,48 @@ New students can register at `/register` with the code `DEMO24`; new centers at 
 
 ## Deploying
 
+### On your own domain with a small server (recommended)
+
+Everyone — parents, students, teachers — opens the site at your address, from anywhere, with HTTPS.
+It costs a domain (about $10–15 a year) and a small server (about $5–7 a month).
+
+1. **Buy a domain**, e.g. `brightfuture.uz` (registrars listed on cctld.uz) or a `.com`
+   (Cloudflare Registrar, Namecheap).
+2. **Rent a server** with **Ubuntu** and **2 GB of memory** (Hetzner, DigitalOcean or any other).
+   You get its IP address and a password.
+3. **Point the domain at the server**: in your domain's DNS settings add an `A` record for `@` with
+   the server's IP (and one for `www` if you want `www.yourdomain.uz` too).
+4. **Log in to the server** (Windows: open *cmd* and type `ssh root@<server IP>`) and run:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Jawas-cre/BIS-school/main/scripts/server-setup.sh -o setup.sh
+   sudo bash setup.sh yourdomain.uz
+   ```
+
+   It asks for the admin's email and password, like the start-here file, and takes about ten
+   minutes. Then open `https://yourdomain.uz`: the home page is your center's website, and everyone
+   logs in from the same address.
+
+The server runs BIS Learn as a service: it starts by itself after a reboot, updates itself from
+GitHub like the laptop version, and keeps a copy of the database every night (the last 14, in
+`/var/backups/bis-learn`). The site only listens on the server itself; the Caddy web server in front
+of it serves your domain and renews the HTTPS certificate. Running the script again is safe (for
+example with a new domain): your data stays.
+
+**Moving your laptop's data to the server** (optional, once, before people start using the server):
+copy the laptop's `prisma/dev.db` to the server (e.g. with WinSCP), then on the server run
+`sudo systemctl stop bis-learn`, put the file at `/opt/bis-learn/prisma/dev.db`, run
+`sudo chown bislearn:bislearn /opt/bis-learn/prisma/dev.db` and `sudo systemctl start bis-learn`.
+Everyone logs in again with their usual email and password.
+
+Handy commands on the server: `sudo systemctl status bis-learn` (is it running?),
+`sudo journalctl -u bis-learn -f` (what it's doing), `sudo systemctl restart bis-learn`.
+
+The free OmniRoute AI tutor runs on the computer that runs BIS Learn, so on a server either install
+OmniRoute there too or choose *Claude (API key)* under *Platform settings → AI tutor*.
+
+### Other hosts
+
 1. Change `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma` and set a
    PostgreSQL `DATABASE_URL`.
 2. Set `SESSION_SECRET` (and `ANTHROPIC_API_KEY` if you use the assistant).
@@ -312,6 +354,8 @@ src/
   proxy.ts               optimistic auth redirect
 scripts/
   launch.mjs             the start-here launcher: first-start admin account, build, run, auto-update
+                         (also the service on an internet server, with BIS_SERVER=1)
+  server-setup.sh        puts BIS Learn on a rented Ubuntu server at your domain with HTTPS
   update.mjs             automatic updates from GitHub for zip copies
   owner.mjs              creates the owner account; `npm run reset-password`
   setup.mjs, make-zip.mjs
