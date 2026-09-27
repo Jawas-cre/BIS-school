@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { AI_DAILY_LIMIT, AI_HISTORY_LIMIT, AI_MODEL, TUTOR_SYSTEM, anthropic, studentContext } from "@/lib/ai";
+import { AI_DAILY_LIMIT, AI_HISTORY_LIMIT, TUTOR_SYSTEM, aiClient, aiSettings, studentContext } from "@/lib/ai";
 import { accuracyBy } from "@/lib/stats";
 import { dayKey } from "@/lib/utils";
 import { fmt } from "@/lib/i18n/format";
@@ -25,6 +25,8 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return problem(400, A.tooLong);
   const { message } = parsed.data;
+  const settings = await aiSettings();
+  if (settings.provider === "off") return problem(503, A.notConfigured);
 
   // Daily limit per student, reset at midnight Tashkent time (UTC+5, no DST).
   const startOfDay = new Date(`${dayKey()}T00:00:00+05:00`);
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
     ? await db.topic.findMany({ where: { id: { in: weakIds } }, select: { name: true, subject: { select: { name: true } } } })
     : [];
 
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
+  const messages: { role: "user" | "assistant"; content: string }[] = [
     ...history.reverse().map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     { role: "user", content: message },
   ];
@@ -71,52 +73,67 @@ export async function POST(req: Request) {
 
   const encoder = new TextEncoder();
   const conversationId = conversation.id;
+  const context = studentContext({
+    name: user.name,
+    grade: user.grade,
+    goal: user.goal,
+    examDate: user.examDate,
+    subjects: [...new Set(user.memberships.map((m) => m.group.subject?.name).filter((n): n is string => Boolean(n)))],
+    avgTestScore: avg._avg.score === null ? null : Math.round(avg._avg.score),
+    weakest: weakTopics.map((t) => `${t.name} (${t.subject.name})`),
+    centerName: user.center?.name ?? null,
+    locale,
+  });
+  const client = aiClient(settings);
+
+  /**
+   * Streams the answer, calling onText for each piece, and returns why the model stopped. Claude gets
+   * the full request; OmniRoute's free models get the plain Messages format every provider understands.
+   */
+  async function streamAnswer(onText: (delta: string) => void) {
+    if (settings.provider === "omniroute") {
+      const stream = client.messages.stream(
+        { model: settings.omnirouteModel, max_tokens: 4096, system: `${TUTOR_SYSTEM}\n\n${context}`, messages },
+        { signal: req.signal },
+      );
+      stream.on("text", onText);
+      return (await stream.finalMessage()).stop_reason;
+    }
+    const stream = client.beta.messages.stream(
+      {
+        model: settings.claudeModel,
+        max_tokens: 16000,
+        output_config: { effort: "medium" },
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        cache_control: { type: "ephemeral" },
+        system: [
+          { type: "text", text: TUTOR_SYSTEM },
+          { type: "text", text: context },
+        ],
+        messages,
+      },
+      { signal: req.signal },
+    );
+    stream.on("text", onText);
+    return (await stream.finalMessage()).stop_reason;
+  }
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       let text = "";
       let modelText = "";
       try {
-        const stream = anthropic().beta.messages.stream(
-          {
-            model: AI_MODEL,
-            max_tokens: 16000,
-            output_config: { effort: "medium" },
-            betas: ["server-side-fallback-2026-07-01"],
-            fallbacks: "default",
-            cache_control: { type: "ephemeral" },
-            system: [
-              { type: "text", text: TUTOR_SYSTEM },
-              {
-                type: "text",
-                text: studentContext({
-                  name: user.name,
-                  grade: user.grade,
-                  goal: user.goal,
-                  examDate: user.examDate,
-                  subjects: [...new Set(user.memberships.map((m) => m.group.subject?.name).filter((n): n is string => Boolean(n)))],
-                  avgTestScore: avg._avg.score === null ? null : Math.round(avg._avg.score),
-                  weakest: weakTopics.map((t) => `${t.name} (${t.subject.name})`),
-                  centerName: user.center?.name ?? null,
-                  locale,
-                }),
-              },
-            ],
-            messages,
-          },
-          { signal: req.signal },
-        );
-        stream.on("text", (delta) => {
+        const stopReason = await streamAnswer((delta) => {
           text += delta;
           modelText += delta;
           controller.enqueue(encoder.encode(delta));
         });
-        const final = await stream.finalMessage();
-        if (final.stop_reason === "refusal") {
+        if (stopReason === "refusal") {
           const note = `\n\n_${A.refusal}_`;
           text += note;
           controller.enqueue(encoder.encode(note));
-        } else if (final.stop_reason === "max_tokens") {
+        } else if (stopReason === "max_tokens") {
           const note = `\n\n_${A.cutShort}_`;
           text += note;
           controller.enqueue(encoder.encode(note));
@@ -127,11 +144,13 @@ export async function POST(req: Request) {
             ? A.notConfigured
             : error instanceof Anthropic.RateLimitError
               ? A.busy
-              : error instanceof Anthropic.APIError
-                ? fmt(A.apiError, { status: error.status ?? A.network })
-                : req.signal.aborted
-                  ? ""
-                  : A.couldntRespond;
+              : error instanceof Anthropic.APIConnectionError && settings.provider === "omniroute" && !req.signal.aborted
+                ? fmt(A.gatewayDown, { url: settings.omnirouteUrl })
+                : error instanceof Anthropic.APIError
+                  ? fmt(A.apiError, { status: error.status ?? A.network })
+                  : req.signal.aborted
+                    ? ""
+                    : A.couldntRespond;
         if (note) {
           const chunk = `${text ? "\n\n" : ""}_${note}_`;
           text += chunk;

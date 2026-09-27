@@ -20,6 +20,8 @@ import { removeStudent, resetStudentPassword, updateStudent } from "../../_actio
 import { pct } from "@/lib/utils";
 import { fmt } from "@/lib/i18n/format";
 import { getI18n, pageTitle } from "@/lib/i18n/server";
+import { studentJournal } from "@/lib/journal";
+import { JournalView } from "@/components/journal-view";
 
 export const generateMetadata = pageTitle((t) => t.adminStudent.title);
 
@@ -49,6 +51,8 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
     db.branch.findMany({ where: { centerId: staff.centerId }, orderBy: { name: "asc" } }),
   ]);
   const memberOf = new Set(student.memberships.map((m) => m.groupId));
+  // Teachers see the lessons of the groups they teach.
+  const journal = (await studentJournal(student.id)).filter((e) => admin || e.lesson.group.teacherId === staff.id);
 
   return (
     <div className="space-y-6">
@@ -182,6 +186,10 @@ export default async function StudentDetail({ params }: PageProps<"/admin/studen
           </table>
         </CardBody>
       </Card>
+      <section className="space-y-3">
+        <h2 className="font-display text-xl font-bold">{t.journal.cardTitle}</h2>
+        <JournalView entries={journal} limit={12} />
+      </section>
     </div>
   );
 }

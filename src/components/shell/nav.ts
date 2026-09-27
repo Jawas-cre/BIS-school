@@ -4,6 +4,8 @@ export type NavItem = { href: string; label: keyof Dict["nav"]; icon: string; ba
 
 export const STUDENT_NAV: NavItem[] = [
   { href: "/dashboard", label: "dashboard", icon: "LayoutDashboard" },
+  { href: "/assignments", label: "assignments", icon: "ClipboardList" },
+  { href: "/journal", label: "journal", icon: "NotebookPen" },
   { href: "/roadmap", label: "roadmap", icon: "Map" },
   { href: "/questions", label: "questions", icon: "ListChecks" },
   { href: "/tests", label: "tests", icon: "ClipboardCheck" },
@@ -46,5 +48,6 @@ export const TEACHER_NAV: NavItem[] = [
 export const PLATFORM_NAV: NavItem[] = [
   { href: "/platform", label: "centers", icon: "Building2" },
   { href: "/platform/universities", label: "platformUniversities", icon: "GraduationCap" },
+  { href: "/platform/ai", label: "aiTutor", icon: "Sparkles" },
   { href: "/platform/news", label: "announcements", icon: "Megaphone" },
 ];

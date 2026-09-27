@@ -131,6 +131,9 @@ export const nav = defineMessages({
     platformSettings: "Platform settings",
     myGroups: "My groups",
     myStudents: "My students",
+    aiTutor: "AI tutor",
+    journal: "Journal",
+    assignments: "Assignments",
   },
   uz: {
     dashboard: "Bosh sahifa",
@@ -163,6 +166,9 @@ export const nav = defineMessages({
     platformSettings: "Platforma sozlamalari",
     myGroups: "Guruhlarim",
     myStudents: "Oʻquvchilarim",
+    aiTutor: "AI yordamchi",
+    journal: "Jurnal",
+    assignments: "Topshiriqlar",
   },
 });
 

@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { db } from "@/lib/db";
 import { PLATFORM_NAME } from "@/lib/brand";
 
 export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
@@ -7,11 +8,42 @@ export const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 60);
 /** How many earlier messages are sent back to the model with each turn. */
 export const AI_HISTORY_LIMIT = 40;
 
-let client: Anthropic | null = null;
-export function anthropic() {
-  // Credentials resolve from ANTHROPIC_API_KEY (or another SDK-supported source).
-  client ??= new Anthropic();
-  return client;
+export const OMNIROUTE_DEFAULTS = { url: "http://localhost:20128", model: "auto" };
+
+export type AiProvider = "claude" | "omniroute" | "off";
+
+/**
+ * How the AI tutor connects, set in Platform settings → AI tutor:
+ * - claude: Anthropic's API with an API key (from the settings page or ANTHROPIC_API_KEY);
+ * - omniroute: an OmniRoute gateway (github.com/diegosouzapw/OmniRoute) on this computer, which
+ *   answers in the same Messages format and routes to free AI providers — no paid key needed;
+ * - off: the assistant explains that it isn't set up.
+ * Without saved settings it uses Claude when ANTHROPIC_API_KEY is set.
+ */
+export async function aiSettings() {
+  const rows = await db.setting.findMany({ where: { key: { startsWith: "ai." } } });
+  const get = (key: string) => rows.find((r) => r.key === `ai.${key}`)?.value || "";
+  const saved = get("provider") as AiProvider | "";
+  return {
+    provider: saved || (process.env.ANTHROPIC_API_KEY ? "claude" : "off"),
+    claudeKey: get("claudeKey"),
+    claudeModel: get("claudeModel") || AI_MODEL,
+    omnirouteUrl: get("omnirouteUrl") || OMNIROUTE_DEFAULTS.url,
+    omnirouteKey: get("omnirouteKey"),
+    omnirouteModel: get("omnirouteModel") || OMNIROUTE_DEFAULTS.model,
+  } satisfies Record<string, string>;
+}
+
+export type AiSettings = Awaited<ReturnType<typeof aiSettings>>;
+
+/** An API client for the chosen connection. OmniRoute speaks Anthropic's Messages API at its own address. */
+export function aiClient(settings: AiSettings) {
+  if (settings.provider === "omniroute") {
+    // OmniRoute accepts any key unless one was set in its dashboard.
+    return new Anthropic({ baseURL: settings.omnirouteUrl.replace(/\/+$/, ""), apiKey: settings.omnirouteKey || "omniroute", maxRetries: 1 });
+  }
+  // Credentials resolve from the saved key or ANTHROPIC_API_KEY (or another SDK-supported source).
+  return new Anthropic(settings.claudeKey ? { apiKey: settings.claudeKey } : {});
 }
 
 // Kept byte-for-byte stable so it can be served from the prompt cache.

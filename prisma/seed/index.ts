@@ -457,6 +457,30 @@ async function main() {
     if (isDemo) console.log(`  demo student: ${plan.length} tests, streak ${streakDays}`);
   }
 
+  console.log("Journal…");
+  // Lessons over the last four weeks on each group's schedule, with attendance and some 1–5 grades.
+  const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  for (const g of groupDefs) {
+    const { id, subject } = groups.get(g.key)!;
+    const weekdays = g.schedule.split("·")[0].split("/").map((d) => WEEKDAY[d.trim()]);
+    const members = await db.groupMember.findMany({ where: { groupId: id }, select: { userId: true } });
+    const topicNames = [...S(subject).topics.keys()];
+    let lessonNo = 0;
+    for (let back = 28; back >= 1; back--) {
+      const when = new Date(Date.now() - back * DAY);
+      if (!weekdays.includes(when.getUTCDay())) continue;
+      const lesson = await db.lesson.create({ data: { groupId: id, day: when.toISOString().slice(0, 10), topic: topicNames[lessonNo++ % topicNames.length] ?? null } });
+      await db.attendance.createMany({
+        data: members.map(({ userId }) => {
+          const r = rng();
+          const status = r < 0.84 ? "PRESENT" : r < 0.92 ? "LATE" : r < 0.97 ? "ABSENT" : "EXCUSED";
+          const grade = (status === "PRESENT" || status === "LATE") && rng() < 0.55 ? pick(rng, [5, 5, 4, 4, 4, 3, 5, 3]) : null;
+          return { lessonId: lesson.id, userId, status, grade };
+        }),
+      });
+    }
+  }
+
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
   console.log("  teacher@demo.uz    – teacher (or log in with the teacher ID T1001)");

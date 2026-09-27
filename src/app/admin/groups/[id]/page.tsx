@@ -12,7 +12,8 @@ import { ActionForm, ConfirmAction } from "@/components/action-form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { addToGroup, deleteGroup, removeFromGroup, toggleUnlock, updateGroup } from "../../_actions/people";
 import { GroupFields } from "../group-fields";
-import { cn } from "@/lib/utils";
+import { JournalCard } from "./journal-card";
+import { cn, dayKey } from "@/lib/utils";
 import { visibleSubjects } from "@/lib/subjects";
 import { SubjectBadge } from "@/components/subject-icon";
 import { fmt } from "@/lib/i18n/format";
@@ -20,9 +21,13 @@ import { getT, pageTitle } from "@/lib/i18n/server";
 
 export const generateMetadata = pageTitle((t) => t.adminGroups.groupTitle);
 
-export default async function GroupPage({ params }: PageProps<"/admin/groups/[id]">) {
+export default async function GroupPage({ params, searchParams }: PageProps<"/admin/groups/[id]">) {
   const staff = await requireStaff();
   const { id } = await params;
+  const sp = await searchParams;
+  // The journal day: ?day=YYYY-MM-DD from the day picker, today by default, never in the future.
+  const today = dayKey();
+  const day = typeof sp.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today ? sp.day : today;
   const t = await getT();
   const G = t.adminGroups;
   // A teacher opens only the groups they teach, and manages members and roadmap access; admins also edit the details.
@@ -150,6 +155,8 @@ export default async function GroupPage({ params }: PageProps<"/admin/groups/[id
           </CardBody>
         </Card>
       </div>
+
+      <JournalCard groupId={group.id} day={day} base={base} members={members.map((m) => ({ id: m.id, name: m.name }))} />
 
       <Card>
         <CardHeader title={G.roadmapAccess} subtitle={group.subject ? fmt(G.roadmapAccessSub, { subject: group.subject.name }) : G.chooseSubjectFirst} />
