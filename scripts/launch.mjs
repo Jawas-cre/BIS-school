@@ -3,6 +3,11 @@
 // and builds the site (a few minutes). Later runs start in seconds. Opens http://localhost:3000.
 // While the site runs, it checks GitHub for a newer version every few minutes and installs it by
 // itself (see update.mjs); refreshing the browser then shows the new version.
+//
+// On an internet server (scripts/server-setup.sh) it runs as a service with BIS_SERVER=1: the site
+// only listens on this machine (the web server in front of it serves the domain with HTTPS), no
+// browser opens, and it refuses to start without an admin account so nobody else can claim the site.
+// `node scripts/launch.mjs --prepare` does everything except starting the site.
 import { spawn } from "node:child_process";
 import { createWriteStream, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import http from "node:http";
@@ -11,8 +16,11 @@ import path from "node:path";
 import { askOwnerDetails, EXIT } from "./owner.mjs";
 import { findUpdate, install, undo, updatesOff } from "./update.mjs";
 
+const SERVER = process.env.BIS_SERVER === "1";
+const PREPARE_ONLY = process.argv.includes("--prepare");
 const PORT = Number(process.env.PORT) || 3000;
-const URL = `http://localhost:${PORT}`;
+const HOST = SERVER ? "127.0.0.1" : "localhost";
+const URL = `http://${HOST}:${PORT}`;
 /** Exit code telling the start-here files that the site was already running and was only opened. */
 const ALREADY_RUNNING = 10;
 const UPDATE_EVERY_MS = (Number(process.env.BIS_UPDATE_MINUTES) || 5) * 60_000;
@@ -191,7 +199,8 @@ async function applyUpdate(update) {
 
 // ─── Start ──────────────────────────────────────────────────────────────────
 
-if (await isUp()) {
+if (!PREPARE_ONLY && (await isUp())) {
+  if (SERVER) stop(`Something is already using port ${PORT}.`);
   say(`The site is already running. Opening ${URL} …`);
   openBrowser();
   process.exit(ALREADY_RUNNING);
@@ -201,8 +210,10 @@ if (await isUp()) {
 const firstRun = !existsSync(DATABASE);
 let owner = null;
 let demo = false;
+if (SERVER && !PREPARE_ONLY && firstRun) stop("This server has no database yet. Run the setup first: sudo bash scripts/server-setup.sh <your-domain>");
 if (firstRun) {
-  const answer = await askOwnerDetails({ allowDemo: true });
+  // A site on the internet never offers the demo center: its sample accounts have a known password.
+  const answer = await askOwnerDetails({ allowDemo: !SERVER });
   if (answer === "demo") demo = true;
   else owner = answer;
 }
@@ -217,6 +228,8 @@ loadEnv();
 if (!demo && (await ownerTask("--has-accounts")) === EXIT.noAccounts) {
   owner ??= await askOwnerDetails();
   if (owner && (await ownerTask("--create", owner)) === EXIT.ok) say(`✓ Admin account created. Log in on the website with ${owner.email} and your password.`);
+  // On a server the setup page would let the first stranger who opens the site become its admin.
+  else if (SERVER) stop("No admin account was created. Run the setup again: sudo bash scripts/server-setup.sh <your-domain>");
   else say("When the browser opens, create your center and your admin email and password there.");
 }
 
@@ -234,6 +247,10 @@ if (!noUpdates) {
 }
 
 if (!(await buildIfNeeded())) stop(`Building the site failed. Send the file ${BUILD_LOG} (or a photo of this window) to the person helping you.`);
+if (PREPARE_ONLY) {
+  say("✓ BIS Learn is ready to start.");
+  process.exit(0);
+}
 
 // ─── Run the site, and update it while it runs ──────────────────────────────
 
@@ -242,7 +259,7 @@ let stopping = false;
 let updating = false;
 
 function startServer() {
-  server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT)], { stdio: "inherit" });
+  server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT), ...(SERVER ? ["-H", HOST] : [])], { stdio: "inherit" });
   server.on("exit", (code) => {
     server = null;
     if (!updating) process.exit(stopping ? 0 : (code ?? 0));
@@ -257,11 +274,13 @@ function stopServer() {
   });
 }
 
-// Ctrl+C reaches the server too; wait for it to shut down and report a normal stop.
-process.on("SIGINT", () => {
-  stopping = true;
-  if (!server) process.exit(0);
-});
+// Ctrl+C (or the service manager stopping a server) reaches the site too; wait for it to shut down and report a normal stop.
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    stopping = true;
+    if (!server) process.exit(0);
+  });
+}
 
 const UPDATING_PAGE = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="8"><title>BIS Learn is updating…</title><style>
@@ -278,7 +297,7 @@ function showUpdatingPage() {
     res.end(UPDATING_PAGE);
   });
   page.on("error", () => {});
-  page.listen(PORT);
+  page.listen(PORT, SERVER ? HOST : undefined);
   return () => new Promise((resolve) => page.close(() => resolve()));
 }
 
@@ -304,9 +323,11 @@ async function updateWhileRunning() {
   say(updated ? "✓ BIS Learn was updated. Refresh the page in your browser to see what's new." : "The update didn't work, so the site is running the previous version.");
 }
 
-say(`Starting the site at ${URL} — your browser will open by itself.\nKeep this window open while you use the site. To stop it, close this window or press Ctrl+C.`);
+if (SERVER) say(`Starting the site at ${URL} (the web server serves it on your domain).`);
+else say(`Starting the site at ${URL} — your browser will open by itself.\nKeep this window open while you use the site. To stop it, close this window or press Ctrl+C.`);
 startServer();
-if (await waitUntilUp()) {
+if (SERVER) await waitUntilUp();
+else if (await waitUntilUp()) {
   openBrowser();
   const phone = phoneUrl();
   if (phone) say(`On phones and tablets on the same Wi-Fi, open ${phone} (the admin overview also shows a QR code).\nIf Windows asks about Node.js, click "Allow access".`);

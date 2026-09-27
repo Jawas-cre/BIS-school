@@ -21,7 +21,8 @@ function lanAddresses() {
  * start-here launcher. Null when it runs elsewhere (e.g. online), where the normal address works.
  */
 export async function phoneAddress() {
-  if (process.env.BIS_LAUNCHER !== "1") return null;
+  // On an internet server (BIS_SERVER) phones use the domain like everyone else.
+  if (process.env.BIS_LAUNCHER !== "1" || process.env.BIS_SERVER === "1") return null;
   const host = (await headers()).get("host") ?? "";
   const port = host.match(/:(\d+)$/)?.[1] ?? process.env.PORT ?? "3000";
   const [ip] = lanAddresses();
