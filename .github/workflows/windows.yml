@@ -57,6 +57,8 @@ jobs:
           set "BIS_ADMIN_NAME=Windows Check"
           set "BIS_CENTER_NAME=Windows Check Center"
           set "npm_config_cache=C:\bis\npm-cache"
+          rem Test exactly this version: an update from main during the check would change it.
+          set "BIS_UPDATES=off"
           whoami /priv > C:\bis\privileges.txt
           call C:\bis\bis-learn\START-HERE-Windows.bat < NUL > C:\bis\launch.log 2>&1
           "@ | Set-Content -Encoding ascii C:\bis\start.cmd

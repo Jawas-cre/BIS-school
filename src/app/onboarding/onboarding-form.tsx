@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { completeOnboarding } from "./actions";
 import { Field, FormMessage, Input, Select } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { keepValues } from "@/components/action-form";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
@@ -30,7 +31,7 @@ export function OnboardingForm({
   const countries = [...new Set(universities.map((u) => u.country))];
 
   return (
-    <form action={action} className="mt-8 space-y-6">
+    <form action={action} onSubmit={keepValues(action)} className="mt-8 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={f.grade}>
           <Input name="grade" placeholder={f.gradePlaceholder} />

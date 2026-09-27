@@ -26,6 +26,11 @@ model Center {
   accent     String   @default("#2563eb") // brand color used across the center's UI
   inviteCode String   @unique // general student code; InviteCode rows hold extra student and teacher codes
   createdAt  DateTime @default(now())
+  heroTitle  String? // website headline; the center's name is used when empty
+  heroText   String? // website intro text
+  phone      String?
+  telegram   String? // username or link
+  instagram  String? // username or link
 
   branches    Branch[]
   inviteCodes InviteCode[]
@@ -38,6 +43,8 @@ model Center {
   vocabDecks  VocabDeck[]
   library     LibraryItem[]
   news        NewsPost[]
+  siteItems   SiteItem[]
+  leads       Lead[]
 }
 
 model Branch {
@@ -87,6 +94,8 @@ model Topic {
   questions Question[]
   units     RoadmapUnit[]
 
+  assignments Assignment[]
+
   @@index([subjectId])
 }
 
@@ -107,6 +116,9 @@ model Group {
   members     GroupMember[]
   unlocks     GroupUnlock[]
   inviteCodes InviteCode[]
+
+  lessons     Lesson[]
+  assignments Assignment[]
 
   @@index([centerId])
 }
@@ -167,6 +179,8 @@ model User {
   bestStreak   Int       @default(0)
   lastActiveOn String? // YYYY-MM-DD of last practice, used for streaks
   createdAt    DateTime  @default(now())
+  bio          String? // a teacher's short line on the center website, e.g. "IELTS 8.5 · 6 years teaching"
+  onSite       Boolean   @default(true) // a teacher listed on the center website
 
   center        Center?           @relation(fields: [centerId], references: [id], onDelete: Cascade)
   branch        Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
@@ -181,6 +195,8 @@ model User {
   conversations AiConversation[]
   activity      ActivityDay[]
   newsPosts     NewsPost[]
+
+  attendance Attendance[]
 
   @@index([centerId])
 }
@@ -271,6 +287,8 @@ model Test {
   modules  TestModule[]
   attempts TestAttempt[]
 
+  assignments Assignment[]
+
   @@index([centerId])
 }
 
@@ -337,6 +355,8 @@ model RoadmapUnit {
   topic    Topic?         @relation(fields: [topicId], references: [id], onDelete: SetNull)
   progress UnitProgress[]
   unlocks  GroupUnlock[]
+
+  assignments Assignment[]
 
   @@index([centerId, subjectId, order])
 }
@@ -488,4 +508,101 @@ model AiMessage {
   conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+// Site-wide settings changed in the app (e.g. how the AI tutor connects), one row per key.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// The teacher's journal: one lesson of a group on a day, with who came and the grades given.
+model Lesson {
+  id        String   @id @default(cuid())
+  groupId   String
+  day       String // YYYY-MM-DD in Tashkent
+  topic     String?
+  createdAt DateTime @default(now())
+
+  group      Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+
+  @@unique([groupId, day])
+}
+
+model Attendance {
+  lessonId String
+  userId   String
+  status   String // PRESENT | LATE | ABSENT | EXCUSED
+  grade    Int? // 1–5, optional
+  note     String?
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, userId])
+  @@index([userId])
+}
+
+// Work a teacher sets for a group, due by a day: a mock test, a roadmap unit, or practice questions on a topic.
+model Assignment {
+  id          String   @id @default(cuid())
+  groupId     String
+  kind        String // TEST | UNIT | PRACTICE
+  testId      String?
+  unitId      String?
+  topicId     String?
+  questions   Int? // PRACTICE: how many questions to answer on the topic
+  title       String
+  note        String?
+  dueOn       String // YYYY-MM-DD in Tashkent; due by the end of that day
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  group Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  test  Test?        @relation(fields: [testId], references: [id], onDelete: Cascade)
+  unit  RoadmapUnit? @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  topic Topic?       @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+}
+
+// Content of a center's public website, in the admin's order. What the fields hold depends on kind:
+// COURSE — title: course name, subtitle: price, meta: length or level, body: description;
+// RESULT — title: student name, subtitle: result (e.g. "IELTS 8.0"), body: university or note;
+// FAQ    — title: question, body: answer.
+model SiteItem {
+  id        String   @id @default(cuid())
+  centerId  String
+  kind      String
+  title     String
+  subtitle  String?
+  meta      String?
+  body      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, kind])
+}
+
+// A request for a free trial lesson sent from a center's website.
+model Lead {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String
+  phone     String
+  course    String?
+  branch    String?
+  time      String? // when it suits them
+  message   String?
+  status    String   @default("NEW") // NEW | CONTACTED | ENROLLED | CLOSED
+  note      String? // the admin's note
+  createdAt DateTime @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, status])
 }

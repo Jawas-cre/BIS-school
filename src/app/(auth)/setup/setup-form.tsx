@@ -4,13 +4,14 @@ import { useActionState } from "react";
 import { setupFirstCenter } from "../actions";
 import { Field, FormMessage, Input } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { keepValues } from "@/components/action-form";
 import { useT } from "@/lib/i18n/client";
 
 export function SetupForm() {
   const [state, action] = useActionState(setupFirstCenter, null);
   const t = useT();
   return (
-    <form action={action} className="mt-8 space-y-4">
+    <form action={action} onSubmit={keepValues(action)} className="mt-8 space-y-4">
       <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr]">
         <Field label={t.auth.centerName}>
           <Input name="centerName" required placeholder="BIS School" />

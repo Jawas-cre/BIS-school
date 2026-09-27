@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { changePassword, updateProfile } from "./actions";
 import { Field, FormMessage, Input, Select } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { keepValues } from "@/components/action-form";
 import { useT } from "@/lib/i18n/client";
 
 export function ProfileForm({
@@ -17,7 +18,7 @@ export function ProfileForm({
   const t = useT();
   const f = t.fields;
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={keepValues(action)} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.auth.fullName}>
           <Input name="name" defaultValue={defaults.name} required />
@@ -55,8 +56,13 @@ export function PasswordForm() {
   const [state, action] = useActionState(changePassword, null);
   const t = useT();
   const P = t.profile;
+  // Clear the passwords once they're changed.
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state?.ok) ref.current?.reset();
+  }, [state]);
   return (
-    <form action={action} className="space-y-4">
+    <form ref={ref} action={action} onSubmit={keepValues(action)} className="space-y-4">
       <Field label={P.currentPassword}>
         <Input name="current" type="password" autoComplete="current-password" required />
       </Field>

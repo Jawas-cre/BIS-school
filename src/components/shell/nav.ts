@@ -4,6 +4,8 @@ export type NavItem = { href: string; label: keyof Dict["nav"]; icon: string; ba
 
 export const STUDENT_NAV: NavItem[] = [
   { href: "/dashboard", label: "dashboard", icon: "LayoutDashboard" },
+  { href: "/assignments", label: "assignments", icon: "ClipboardList" },
+  { href: "/journal", label: "journal", icon: "NotebookPen" },
   { href: "/roadmap", label: "roadmap", icon: "Map" },
   { href: "/questions", label: "questions", icon: "ListChecks" },
   { href: "/tests", label: "tests", icon: "ClipboardCheck" },
@@ -16,6 +18,7 @@ export const STUDENT_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "overview", icon: "LayoutDashboard" },
+  { href: "/admin/leads", label: "leads", icon: "Inbox" },
   { href: "/admin/students", label: "students", icon: "Users" },
   { href: "/admin/codes", label: "codes", icon: "KeyRound" },
   { href: "/admin/groups", label: "groups", icon: "Layers" },
@@ -27,6 +30,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/library", label: "library", icon: "Library" },
   { href: "/admin/news", label: "announcements", icon: "Megaphone" },
   { href: "/admin/staff", label: "staff", icon: "ShieldCheck" },
+  { href: "/admin/website", label: "website", icon: "Globe" },
   { href: "/admin/settings", label: "settings", icon: "Settings" },
 ];
 
@@ -46,5 +50,6 @@ export const TEACHER_NAV: NavItem[] = [
 export const PLATFORM_NAV: NavItem[] = [
   { href: "/platform", label: "centers", icon: "Building2" },
   { href: "/platform/universities", label: "platformUniversities", icon: "GraduationCap" },
+  { href: "/platform/ai", label: "aiTutor", icon: "Sparkles" },
   { href: "/platform/news", label: "announcements", icon: "Megaphone" },
 ];

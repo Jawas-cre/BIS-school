@@ -26,6 +26,10 @@ import {
   ArrowLeftRight,
   Shapes,
   KeyRound,
+  NotebookPen,
+  ClipboardList,
+  Globe,
+  Inbox,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { LanguageMenu } from "@/components/language-menu";
@@ -54,6 +58,10 @@ const ICONS = {
   Building2,
   Shapes,
   KeyRound,
+  NotebookPen,
+  ClipboardList,
+  Globe,
+  Inbox,
 };
 
 export type ShellUser = {

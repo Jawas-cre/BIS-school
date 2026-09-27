@@ -26,6 +26,8 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
   const base = panelBase(staff.role);
   const q = typeof sp.q === "string" ? sp.q.toLowerCase().slice(0, 60) : "";
   const groupId = typeof sp.group === "string" ? sp.group : "";
+  // "Create student account" on an application fills in the name and phone.
+  const prefill = { name: typeof sp.name === "string" ? sp.name.slice(0, 80) : "", phone: typeof sp.phone === "string" ? sp.phone.slice(0, 30) : "" };
   const [all, groups] = await Promise.all([
     centerStudents(staff.centerId, { teacherId: teacher ? staff.id : undefined }),
     db.group.findMany({ where: staffGroups(staff), orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -102,13 +104,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
           </div>
         </div>
 
-        {!teacher && <Card className="self-start">
+        {!teacher && <Card id="add" className="self-start scroll-mt-20">
           <CardHeader title={S.addTitle} subtitle={S.addSubtitle} action={<UserPlus className="size-4 text-muted" />} />
           <CardBody>
             <ActionForm action={createStudent} submitLabel={S.createAccount} resetOnSuccess>
-              <Field label={t.auth.fullName}><Input name="name" required /></Field>
+              <Field label={t.auth.fullName}><Input name="name" defaultValue={prefill.name} required /></Field>
               <Field label={t.auth.email}><Input name="email" type="email" required /></Field>
-              <Field label={t.fields.phone}><Input name="phone" type="tel" /></Field>
+              <Field label={t.fields.phone}><Input name="phone" type="tel" defaultValue={prefill.phone} /></Field>
               <Field label={t.fields.grade}><Input name="grade" placeholder={S.gradePlaceholder} /></Field>
               <fieldset>
                 <legend className="mb-1.5 text-sm font-semibold">{S.groups}</legend>

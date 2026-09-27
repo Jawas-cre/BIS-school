@@ -4,13 +4,14 @@ import { useActionState } from "react";
 import { registerWithCode } from "../actions";
 import { Field, FormMessage, Input } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { keepValues } from "@/components/action-form";
 import { useT } from "@/lib/i18n/client";
 
 export function RegisterForm({ code }: { code: string }) {
   const [state, action] = useActionState(registerWithCode, null);
   const t = useT();
   return (
-    <form action={action} className="mt-8 space-y-4">
+    <form action={action} onSubmit={keepValues(action)} className="mt-8 space-y-4">
       <Field label={t.auth.inviteCode} hint={t.auth.inviteCodeHint}>
         <Input
           name="code"

@@ -45,6 +45,8 @@ async function reset() {
   await db.topic.deleteMany();
   await db.subject.deleteMany();
   await db.branch.deleteMany();
+  await db.siteItem.deleteMany();
+  await db.lead.deleteMany();
   await db.center.deleteMany();
   await db.university.deleteMany();
 }
@@ -242,7 +244,19 @@ async function main() {
   await db.user.create({ data: { email: "owner@bislearn.uz", name: "Platform Owner", passwordHash: hash, role: "SUPER_ADMIN", onboarded: true } });
 
   const center = await db.center.create({
-    data: { name: "Bright Future Academy", slug: "bright-future", city: "Tashkent", about: "Mathematics, sciences and languages for school students in Tashkent since 2019.", inviteCode: "DEMO24", accent: "#2563eb" },
+    data: {
+      name: "Bright Future Academy",
+      slug: "bright-future",
+      city: "Tashkent",
+      about: "Mathematics, sciences and languages for school students in Tashkent since 2019.",
+      inviteCode: "DEMO24",
+      accent: "#2563eb",
+      heroTitle: "Strong grades, confident students, open doors",
+      heroText: "Mathematics, sciences, English and mental arithmetic for grades 5–11 at two branches in Tashkent. Small groups, experienced teachers and weekly progress reports for parents.",
+      phone: "+998 71 200 12 12",
+      telegram: "@brightfuture_academy",
+      instagram: "@brightfuture.academy",
+    },
   });
 
   // A center-only subject with its own questions and quiz.
@@ -260,9 +274,11 @@ async function main() {
     db.branch.create({ data: { centerId: center.id, name: "Yunusobod branch", address: "Amir Temur St 108, Tashkent", phone: "+998 71 200 34 34" } }),
   ]);
   await db.user.create({ data: { email: "admin@demo.uz", name: "Kamola Rashidova", passwordHash: hash, role: "CENTER_ADMIN", centerId: center.id, onboarded: true } });
-  const jasur = await db.user.create({ data: { email: "teacher@demo.uz", loginId: "T1001", name: "Jasur Tursunov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
-  const malika = await db.user.create({ data: { email: "teacher2@demo.uz", loginId: "T1002", name: "Malika Yusupova", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: yunusobod.id, onboarded: true } });
-  const otabek = await db.user.create({ data: { email: "teacher3@demo.uz", loginId: "T1003", name: "Otabek Rahimov", passwordHash: hash, role: "TEACHER", centerId: center.id, branchId: chilonzor.id, onboarded: true } });
+  const teacher = (email: string, loginId: string, name: string, branchId: string, bio: string) =>
+    db.user.create({ data: { email, loginId, name, bio, passwordHash: hash, role: "TEACHER", centerId: center.id, branchId, onboarded: true } });
+  const jasur = await teacher("teacher@demo.uz", "T1001", "Jasur Tursunov", chilonzor.id, "Mathematics and physics · 8 years of teaching · prepares students for lyceum entrance exams and olympiads.");
+  const malika = await teacher("teacher2@demo.uz", "T1002", "Malika Yusupova", yunusobod.id, "English · IELTS 8.5 · CELTA · 6 years of teaching; also runs the mental arithmetic club for kids.");
+  const otabek = await teacher("teacher3@demo.uz", "T1003", "Otabek Rahimov", chilonzor.id, "Chemistry and biology · medical university graduate · 5 years preparing students for medical admissions.");
 
   const groupDefs = [
     { key: "math", name: "Mathematics · Grade 9 A", subject: "Mathematics", teacher: jasur, branch: chilonzor, schedule: "Mon / Wed / Fri · 15:00", unlocked: 3 },
@@ -456,6 +472,82 @@ async function main() {
     });
     if (isDemo) console.log(`  demo student: ${plan.length} tests, streak ${streakDays}`);
   }
+
+  console.log("Journal…");
+  // Lessons over the last four weeks on each group's schedule, with attendance and some 1–5 grades.
+  const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  for (const g of groupDefs) {
+    const { id, subject } = groups.get(g.key)!;
+    const weekdays = g.schedule.split("·")[0].split("/").map((d) => WEEKDAY[d.trim()]);
+    const members = await db.groupMember.findMany({ where: { groupId: id }, select: { userId: true } });
+    const topicNames = [...S(subject).topics.keys()];
+    let lessonNo = 0;
+    for (let back = 28; back >= 1; back--) {
+      const when = new Date(Date.now() - back * DAY);
+      if (!weekdays.includes(when.getUTCDay())) continue;
+      const lesson = await db.lesson.create({ data: { groupId: id, day: when.toISOString().slice(0, 10), topic: topicNames[lessonNo++ % topicNames.length] ?? null } });
+      await db.attendance.createMany({
+        data: members.map(({ userId }) => {
+          const r = rng();
+          const status = r < 0.84 ? "PRESENT" : r < 0.92 ? "LATE" : r < 0.97 ? "ABSENT" : "EXCUSED";
+          const grade = (status === "PRESENT" || status === "LATE") && rng() < 0.55 ? pick(rng, [5, 5, 4, 4, 4, 3, 5, 3]) : null;
+          return { lessonId: lesson.id, userId, status, grade };
+        }),
+      });
+    }
+  }
+
+  console.log("Assignments…");
+  // A few assignments for the Mathematics group: a test due soon, practice on a topic, and an overdue unit.
+  const mathGroup = groups.get("math")!.id;
+  const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+  const assignedAt = new Date(Date.now() - 4 * DAY);
+  const mathTopics = [...S("Mathematics").topics.entries()];
+  const mathUnits = unitsBySubject.get("Mathematics") ?? [];
+  const mathExam = exams.get("Mathematics");
+  await db.assignment.createMany({
+    data: [
+      ...(mathExam ? [{ groupId: mathGroup, kind: "TEST", testId: mathExam.id, title: mathExam.title, dueOn: inDays(3), createdById: jasur.id, createdAt: assignedAt, note: "Timed, like the real exam. Review your mistakes afterwards." }] : []),
+      ...(mathTopics[1] ? [{ groupId: mathGroup, kind: "PRACTICE", topicId: mathTopics[1][1], questions: 10, title: `${mathTopics[1][0]}: 10 practice questions`, dueOn: inDays(5), createdById: jasur.id, createdAt: assignedAt }] : []),
+      ...(mathUnits[2] ? [{ groupId: mathGroup, kind: "UNIT", unitId: mathUnits[2].id, title: "Finish roadmap unit 3", dueOn: inDays(-1), createdById: jasur.id, createdAt: new Date(Date.now() - 9 * DAY) }] : []),
+    ],
+  });
+
+  console.log("Website…");
+  // The center's public website (/c/bright-future): courses, results, questions and a few trial lesson requests.
+  const site = (kind: string, items: { title: string; subtitle?: string; meta?: string; body?: string }[]) =>
+    items.map((item, order) => ({ ...item, centerId: center.id, kind, order }));
+  await db.siteItem.createMany({
+    data: [
+      ...site("COURSE", [
+        { title: "Mathematics", subtitle: "450 000 soʻm / month", meta: "Grades 5–11", body: "School maths from fractions to calculus, lyceum entrance exam and olympiad preparation." },
+        { title: "General English", subtitle: "400 000 soʻm / month", meta: "A1 → B2", body: "Speaking, grammar and vocabulary in small groups, with a placement test before you start." },
+        { title: "IELTS preparation", subtitle: "550 000 soʻm / month", meta: "Target 6.5+", body: "All four skills, weekly mock tests and personal feedback on your writing and speaking." },
+        { title: "Physics", subtitle: "450 000 soʻm / month", meta: "Grades 7–11", body: "Mechanics, electricity and waves with problem-solving practice for school and university exams." },
+        { title: "Chemistry & Biology", subtitle: "500 000 soʻm / month", meta: "Medical track", body: "Everything you need for medical university admissions, with regular timed tests." },
+        { title: "Mental Arithmetic", subtitle: "300 000 soʻm / month", meta: "Ages 6–12", body: "Fast calculation, memory and concentration for younger students — lots of games." },
+      ]),
+      ...site("RESULT", [
+        { title: "Madina Xolmatova", subtitle: "IELTS 8.0", body: "Admitted to a medical university in Europe with a scholarship" },
+        { title: "Bekzod Aliyev", subtitle: "1st place", body: "Tashkent city physics olympiad" },
+        { title: "Kamila Usmonova", subtitle: "IELTS 7.5", body: "After 8 months in the IELTS course" },
+        { title: "Islom Qodirov", subtitle: "Grant", body: "Turin Polytechnic University in Tashkent, engineering" },
+      ]),
+      ...site("FAQ", [
+        { title: "Is the first lesson really free?", body: "Yes. Book a free trial lesson below — you meet the teacher, see how the group works and only then decide." },
+        { title: "How many students are in a group?", body: "8–12 students, so the teacher can check everyone's work in every lesson." },
+        { title: "How do parents follow progress?", body: "Every student has an account with their attendance, grades, homework and test results. We also share a short report every week." },
+        { title: "Can I pay monthly?", body: "Yes, courses are paid monthly. Brothers and sisters get 10% off." },
+      ]),
+    ],
+  });
+  await db.lead.createMany({
+    data: [
+      { centerId: center.id, name: "Shahlo Karimova", phone: "+998 90 123 45 67", course: "IELTS preparation", branch: "Yunusobod branch", time: "Weekdays after 17:00", message: "My daughter is in grade 10 and wants 7.0 by next summer.", createdAt: new Date(Date.now() - 2 * 3_600_000) },
+      { centerId: center.id, name: "Aziz Tursunov", phone: "+998 93 555 12 34", course: "Mathematics", time: "Saturday morning", createdAt: new Date(Date.now() - 26 * 3_600_000) },
+      { centerId: center.id, name: "Nargiza Aliyeva", phone: "+998 97 777 88 99", course: "Mental Arithmetic", branch: "Chilonzor branch", status: "CONTACTED", note: "Called. Trial lesson on Saturday at 10:00.", createdAt: new Date(Date.now() - 3 * DAY) },
+    ],
+  });
 
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
