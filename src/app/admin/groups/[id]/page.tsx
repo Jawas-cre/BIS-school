@@ -13,6 +13,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { addToGroup, deleteGroup, removeFromGroup, toggleUnlock, updateGroup } from "../../_actions/people";
 import { GroupFields } from "../group-fields";
 import { JournalCard } from "./journal-card";
+import { AssignmentsCard } from "./assignments-card";
+import { MasteryCard } from "./mastery-card";
 import { cn, dayKey } from "@/lib/utils";
 import { visibleSubjects } from "@/lib/subjects";
 import { SubjectBadge } from "@/components/subject-icon";
@@ -157,6 +159,10 @@ export default async function GroupPage({ params, searchParams }: PageProps<"/ad
       </div>
 
       <JournalCard groupId={group.id} day={day} base={base} members={members.map((m) => ({ id: m.id, name: m.name }))} />
+
+      <AssignmentsCard group={group} members={members.map((m) => ({ id: m.id, name: m.name }))} units={units.map((u) => ({ id: u.id, title: u.title }))} />
+
+      {group.subject && <MasteryCard subject={group.subject} members={members.map((m) => ({ id: m.id, name: m.name }))} base={base} />}
 
       <Card>
         <CardHeader title={G.roadmapAccess} subtitle={group.subject ? fmt(G.roadmapAccessSub, { subject: group.subject.name }) : G.chooseSubjectFirst} />

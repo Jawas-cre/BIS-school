@@ -3,6 +3,9 @@ import { Bookmark, Check, ChevronLeft, ChevronRight, Circle, Search, X } from "l
 import { requireStudentArea } from "@/lib/auth";
 import { bankQuery, filtersToQuery, parseFilters, preview, type BankFilters } from "@/lib/questions";
 import { enrolledSubjectIds, visibleSubjects } from "@/lib/subjects";
+import { masteryPercent, topicMastery } from "@/lib/mastery";
+import { MasteryLegend, MasterySquare } from "@/components/mastery";
+import { Progress } from "@/components/ui/misc";
 import { PageHeader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { DifficultyBadge } from "@/components/ui/difficulty-badge";
@@ -42,6 +45,7 @@ export default async function QuestionBankPage({ searchParams }: PageProps<"/que
   const [{ rows, results, saved }, scope] = await Promise.all([bankQuery(user, f), bankQuery(user, { subject: f.subject })]);
   const answered = scope.rows.filter((r) => results.has(r.id)).length;
   const correct = scope.rows.filter((r) => results.get(r.id) === true).length;
+  const mastery = subject ? (await topicMastery([user.id], subject.topics.map((x) => x.id))).get(user.id) : undefined;
   const topicCounts = new Map<string, number>();
   for (const r of scope.rows) topicCounts.set(r.topicId, (topicCounts.get(r.topicId) ?? 0) + 1);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -101,6 +105,13 @@ export default async function QuestionBankPage({ searchParams }: PageProps<"/que
           <aside>
             <nav className="rounded-2xl border border-line bg-surface p-3 shadow-card" aria-label={B.topics}>
               <div className="px-2 pt-1 pb-2 text-[11px] font-bold tracking-wider text-muted uppercase">{fmt(B.subjectTopics, { subject: subject.name })}</div>
+              <div className="mx-2 mb-2 rounded-lg bg-surface-2 px-2.5 py-2">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span>{t.mastery.yourMastery}</span>
+                  <span className="tabular-nums">{masteryPercent(mastery, subject.topics.map((x) => x.id))}%</span>
+                </div>
+                <Progress value={masteryPercent(mastery, subject.topics.map((x) => x.id))} className="mt-1.5" />
+              </div>
               <Link
                 href={`/questions${filtersToQuery({ ...f, topic: undefined })}`}
                 className={cn("flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px]", !f.topic ? "bg-brand-soft font-semibold text-brand" : "text-ink-2 hover:bg-surface-2")}
@@ -113,10 +124,15 @@ export default async function QuestionBankPage({ searchParams }: PageProps<"/que
                   href={`/questions${filtersToQuery({ ...f, topic: topic.id })}`}
                   className={cn("flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px]", f.topic === topic.id ? "bg-brand-soft font-semibold text-brand" : "text-ink-2 hover:bg-surface-2")}
                 >
-                  <span className="truncate">{topic.name}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <MasterySquare level={mastery?.get(topic.id) ?? "NOT_STARTED"} label={t.mastery.level[mastery?.get(topic.id) ?? "NOT_STARTED"]} />
+                    <span className="truncate">{topic.name}</span>
+                  </span>
                   <span className="text-xs text-muted tabular-nums">{topicCounts.get(topic.id) ?? 0}</span>
                 </Link>
               ))}
+              <MasteryLegend className="mt-3 border-t border-line px-2 pt-3" />
+              <p className="mt-2 px-2 text-xs text-muted">{t.mastery.howItWorks}</p>
             </nav>
           </aside>
         )}

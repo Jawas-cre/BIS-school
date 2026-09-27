@@ -481,6 +481,22 @@ async function main() {
     }
   }
 
+  console.log("Assignments…");
+  // A few assignments for the Mathematics group: a test due soon, practice on a topic, and an overdue unit.
+  const mathGroup = groups.get("math")!.id;
+  const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+  const assignedAt = new Date(Date.now() - 4 * DAY);
+  const mathTopics = [...S("Mathematics").topics.entries()];
+  const mathUnits = unitsBySubject.get("Mathematics") ?? [];
+  const mathExam = exams.get("Mathematics");
+  await db.assignment.createMany({
+    data: [
+      ...(mathExam ? [{ groupId: mathGroup, kind: "TEST", testId: mathExam.id, title: mathExam.title, dueOn: inDays(3), createdById: jasur.id, createdAt: assignedAt, note: "Timed, like the real exam. Review your mistakes afterwards." }] : []),
+      ...(mathTopics[1] ? [{ groupId: mathGroup, kind: "PRACTICE", topicId: mathTopics[1][1], questions: 10, title: `${mathTopics[1][0]}: 10 practice questions`, dueOn: inDays(5), createdById: jasur.id, createdAt: assignedAt }] : []),
+      ...(mathUnits[2] ? [{ groupId: mathGroup, kind: "UNIT", unitId: mathUnits[2].id, title: "Finish roadmap unit 3", dueOn: inDays(-1), createdById: jasur.id, createdAt: new Date(Date.now() - 9 * DAY) }] : []),
+    ],
+  });
+
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
   console.log("  teacher@demo.uz    – teacher (or log in with the teacher ID T1001)");

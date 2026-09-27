@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, CalendarDays, ClipboardCheck, Clock, Languages, Map, Pin, Target, Users } from "lucide-react";
+import { ArrowRight, BookOpenCheck, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, Clock, Languages, Map, Pin, Target, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireStudentArea, visibleTo } from "@/lib/auth";
 import { liveStreak } from "@/lib/activity";
@@ -19,6 +19,10 @@ import { SubjectIcon } from "@/components/subject-icon";
 import { ScoreTrend } from "@/components/charts/score-trend";
 import { SubjectBars } from "@/components/charts/subject-bars";
 import { ActivityHeatmap } from "@/components/charts/activity-heatmap";
+import { studentAssignments } from "@/lib/assignments";
+import { attended, studentJournal } from "@/lib/journal";
+import { masteryPercent, topicMastery } from "@/lib/mastery";
+import { AssignmentItem } from "@/components/assignment-item";
 
 export const generateMetadata = pageTitle((t) => t.nav.dashboard);
 
@@ -40,7 +44,7 @@ export default async function DashboardPage() {
     ? await db.groupMember.findMany({ where: { groupId: { in: groupIds }, userId: { not: user.id } }, select: { userId: true }, distinct: ["userId"] })
     : [];
 
-  const [attempts, comparison, calendar, totals, news, overview] = await Promise.all([
+  const [attempts, comparison, calendar, totals, news, overview, assignments, journal, mastery] = await Promise.all([
     db.testAttempt.findMany({
       where: { userId: user.id, status: "COMPLETED" },
       orderBy: { finishedAt: "asc" },
@@ -51,7 +55,15 @@ export default async function DashboardPage() {
     userTotals(user.id),
     db.newsPost.findMany({ where: visibleTo(user.centerId), orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }),
     roadmapOverview(user, mySubjects.map((s) => s.id)),
+    studentAssignments(user.id, groupIds),
+    studentJournal(user.id, 200),
+    topicMastery([user.id], mySubjects.flatMap((s) => s.topics.map((x) => x.id))).then((m) => m.get(user.id)),
   ]);
+  const dueSoon = assignments.filter((a) => a.state !== "done").sort((x, y) => (x.state === y.state ? x.dueOn.localeCompare(y.dueOn) : x.state === "overdue" ? -1 : 1));
+  const counted = journal.filter((e) => e.status !== "EXCUSED");
+  const attendanceRate = counted.length ? Math.round((counted.filter((e) => attended(e.status)).length / counted.length) * 100) : null;
+  const grades = journal.map((e) => e.grade).filter((g): g is number => g !== null);
+  const avgGrade = grades.length ? Math.round((grades.reduce((a, b) => a + b, 0) / grades.length) * 10) / 10 : null;
 
   const days = user.examDate ? daysUntil(user.examDate) : null;
   const uni = user.targetUni;
@@ -117,6 +129,45 @@ export default async function DashboardPage() {
         <StatTile label={D.wordsMastered} value={totals.mastered} hint={fmt(D.unitsDone, { n: totals.units })} icon={<Languages className="size-4" />} />
       </div>
 
+      {groupIds.length > 0 && (
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <Card>
+            <CardHeader
+              title={t.assignments.dueSoon}
+              action={<Link href="/assignments" className="text-sm font-semibold text-brand hover:underline">{t.assignments.seeAll}</Link>}
+            />
+            <CardBody className="space-y-2">
+              {dueSoon.length === 0 ? (
+                <p className="flex items-center gap-2 text-sm text-muted"><ClipboardList className="size-4" /> {t.assignments.noneStudent}</p>
+              ) : (
+                dueSoon.slice(0, 3).map((a) => <AssignmentItem key={a.id} a={a} t={t} date={date} compact />)
+              )}
+            </CardBody>
+          </Card>
+          <Card>
+            <CardHeader title={t.journal.cardTitle} action={<Link href="/journal" className="text-sm font-semibold text-brand hover:underline">{t.nav.journal}</Link>} />
+            <CardBody className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-surface-2 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-muted"><CalendarCheck className="size-3.5" /> {t.journal.attendance}</div>
+                  <div className="font-display text-2xl font-extrabold">{attendanceRate === null ? "—" : `${attendanceRate}%`}</div>
+                </div>
+                <div className="rounded-xl bg-surface-2 p-3">
+                  <div className="text-xs font-semibold text-muted">{t.journal.avgGrade}</div>
+                  <div className="font-display text-2xl font-extrabold">{avgGrade ?? "—"}</div>
+                </div>
+              </div>
+              {journal.slice(0, 3).map((e) => (
+                <div key={e.lessonId} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate text-ink-2">{date(e.lesson.day, { year: undefined })} · {e.lesson.group.name}</span>
+                  <span className="shrink-0 font-semibold">{t.journal.status[e.status as keyof typeof t.journal.status]}{e.grade ? ` · ${e.grade}` : ""}</span>
+                </div>
+              ))}
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
       {/* Subjects */}
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -139,7 +190,9 @@ export default async function DashboardPage() {
                   {c?.you !== null && c?.you !== undefined && <Badge tone={c.you >= 75 ? "success" : c.you >= 55 ? "warning" : "danger"}>{c.you}%</Badge>}
                 </div>
                 <div className="mt-4 flex items-center justify-between text-xs text-muted">
-                  <span>{fmt(D.roadmapProgress, { done: o?.done ?? 0, total: o?.total ?? 0 })}</span>
+                  <span>
+                    {fmt(D.roadmapProgress, { done: o?.done ?? 0, total: o?.total ?? 0 })} · {fmt(t.mastery.subjectMastery, { pct: masteryPercent(mastery, s.topics.map((x) => x.id)) })}
+                  </span>
                   <span className="truncate pl-2">{o?.next ? fmt(D.nextUnit, { title: o.next.title }) : o?.total ? D.complete : ""}</span>
                 </div>
                 <Progress value={pct(o?.done ?? 0, o?.total ?? 0)} className="mt-1.5" />
