@@ -120,6 +120,21 @@ center is picked for you).
 - Uploaded recordings and pictures are stored in the `data/` folder next to the database; updates
   keep it, and on a server it is backed up every night with the database.
 
+### CD IELTS Mock on its own — `cd-ielts-mock.zip`
+The same CD mock also comes as **its own site**, for a center that only wants the mock (or wants it
+apart from BIS Learn): `npm run zip -- --mock` makes `cd-ielts-mock.zip`.
+
+- Unzip it and double-click `START-HERE-CD-Mock-Windows.bat` (or `START-HERE-CD-Mock-Mac.command`).
+  The first start asks for the admin's email and password like BIS Learn's, then opens
+  **http://localhost:3100**, so it can run next to BIS Learn (port 3000) on the same computer.
+- It has its own folder, database, accounts and updates. The home page is the candidate site;
+  BIS Learn's pages don't exist there. Staff use **Staff sign-in** (`/mock/staff`, linked at the
+  bottom of the candidate page) with their email or teacher ID.
+- Its staff area adds **Staff** (admins add examiners and admins) and **Settings** (own account and
+  password, the center's name and color, and — for the owner — the AI that estimates Writing).
+- It is the BIS Learn program started with `BIS_APP=mock` (kept in its `.env`), so it updates itself
+  from the same GitHub branch and gets every improvement to the mock.
+
 ### Who can open what
 
 | Area | Student | Teacher | Center admin | Owner (installed the site) | Platform admin |
@@ -314,6 +329,7 @@ Dilshod Yusupov, who has a finished test waiting for marking.
 | `npm run setup` | First-time setup: `.env`, database and demo data |
 | `npm run reset-password` | Set a new password for an account (asks for the email or teacher ID) |
 | `npm run zip` | Make `bis-learn.zip` for laptops, stamped with its version for the updater |
+| `npm run zip -- --mock` | Make `cd-ielts-mock.zip`: the CD IELTS mock as its own site (`START-HERE-CD-Mock-*`, port 3100) |
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build (Webpack; checked on Windows by `.github/workflows/windows.yml`) / server |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
@@ -394,6 +410,7 @@ src/
   lib/                   auth/session, subjects, quiz grading, stats, tests, journal, assignments,
                          mastery, website, AI settings
   lib/mock/              CD mock: question format, band scores, AI Writing estimate, sample test
+  lib/app-mode.ts        BIS_APP="mock": the program runs as the CD mock site on its own
   lib/i18n/              English / Uzbek text (messages/*.ts), language cookie, formatters
   proxy.ts               optimistic auth redirect
 scripts/
@@ -402,7 +419,7 @@ scripts/
   server-setup.sh        puts BIS Learn on a rented Ubuntu server at your domain with HTTPS
   update.mjs             automatic updates from GitHub for zip copies
   owner.mjs              creates the owner account; `npm run reset-password`
-  setup.mjs, make-zip.mjs
+  setup.mjs, make-zip.mjs (also the CD mock zip; its start files are in cd-mock/)
 ```
 
 ## Content notes

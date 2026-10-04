@@ -69,7 +69,7 @@ export default async function MockSettings() {
           </CardBody>
         </Card>
       )}
-      {canManagePlatform(user) && <AiSettingsCards />}
+      {canManagePlatform(user) && <AiSettingsCards mock />}
       <VersionCard />
     </div>
   );

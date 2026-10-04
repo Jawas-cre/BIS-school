@@ -4,6 +4,8 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ActionForm } from "@/components/action-form";
 import { saveAiSettings, testAiConnection } from "./actions";
 import { AiFields } from "./ai-fields";
+import { PLATFORM_NAME } from "@/lib/brand";
+import { fmt } from "@/lib/i18n/format";
 import { getT } from "@/lib/i18n/server";
 
 /** Shows only the end of a saved key, e.g. "••••3f9a". */
@@ -12,9 +14,10 @@ function masked(key: string) {
 }
 
 /** The AI connection and how to set it up: on /platform/ai, and in the CD mock's own settings. Callers check access. */
-export async function AiSettingsCards() {
+export async function AiSettingsCards({ mock = false }: { mock?: boolean }) {
   const t = await getT();
   const P = t.aiSettings;
+  const app = { app: mock ? t.mock.brand : PLATFORM_NAME };
   const s = await aiSettings();
   return (
     <>
@@ -23,6 +26,7 @@ export async function AiSettingsCards() {
         <CardBody>
           <ActionForm action={saveAiSettings} submitLabel={t.common.save}>
             <AiFields
+              offText={mock ? P.offTextMock : undefined}
               defaults={{
                 provider: s.provider,
                 claudeModel: s.claudeModel,
@@ -44,15 +48,15 @@ export async function AiSettingsCards() {
       </Card>
 
       <Card>
-        <CardHeader title={P.howTitle} subtitle={P.howSubtitle} />
+        <CardHeader title={P.howTitle} subtitle={fmt(P.howSubtitle, app)} />
         <CardBody>
           <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-2">
-            <li>{P.how1}</li>
+            <li>{fmt(P.how1, app)}</li>
             <li>
               {P.how2} <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">npm install -g omniroute</code>
             </li>
             <li>
-              {P.how3} <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">omniroute</code> {P.how3b}
+              {P.how3} <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">omniroute</code> {fmt(P.how3b, app)}
             </li>
             <li>{P.how4}</li>
             <li>{P.how5}</li>

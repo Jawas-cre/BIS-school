@@ -1,6 +1,9 @@
 import { PackageCheck } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { installedVersion } from "@/lib/version";
+import { MOCK_ONLY } from "@/lib/app-mode";
+import { PLATFORM_NAME } from "@/lib/brand";
+import { fmt } from "@/lib/i18n/format";
 import { getI18n } from "@/lib/i18n/server";
 
 /** Which version this copy runs and whether it updates itself (nothing in a developer checkout). */
@@ -10,7 +13,7 @@ export async function VersionCard() {
   const S = t.settings;
   return (
     <Card>
-      <CardHeader title={S.versionTitle} subtitle={version.updates ? S.updatesOn : S.updatesOff} action={<PackageCheck className="size-4 text-muted" />} />
+      <CardHeader title={S.versionTitle} subtitle={version.updates ? fmt(S.updatesOn, { app: MOCK_ONLY ? t.mock.brand : PLATFORM_NAME }) : S.updatesOff} action={<PackageCheck className="size-4 text-muted" />} />
       <CardBody>
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>

@@ -10,8 +10,11 @@ type Provider = "off" | "claude" | "omniroute";
 /** The connection choice, with only the chosen connection's fields shown. */
 export function AiFields({
   defaults,
+  offText,
 }: {
   defaults: { provider: Provider; claudeModel: string; claudeKeySaved: string; omnirouteUrl: string; omnirouteModel: string; omnirouteKeySaved: string };
+  /** What "Off" means where these settings are shown (BIS Learn's AI tutor by default). */
+  offText?: string;
 }) {
   const t = useT();
   const P = t.aiSettings;
@@ -19,7 +22,7 @@ export function AiFields({
   const options: { value: Provider; title: string; text: string }[] = [
     { value: "omniroute", title: P.omniroute, text: P.omnirouteText },
     { value: "claude", title: P.claude, text: P.claudeText },
-    { value: "off", title: P.off, text: P.offText },
+    { value: "off", title: P.off, text: offText ?? P.offText },
   ];
   return (
     <>
