@@ -198,9 +198,11 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Select-String -Path C:\cdm\cd-ielts-mock\.env -Pattern '^BIS_APP="mock"' -Quiet)) { throw ".env does not keep BIS_APP=mock" }
+          # curl.exe (part of Windows) shows the redirect itself; Invoke-WebRequest stops with an error on it.
           foreach ($from in "/", "/dashboard", "/admin") {
-            $r = Invoke-WebRequest "http://localhost:3100$from" -UseBasicParsing -MaximumRedirection 0 -SkipHttpErrorCheck
-            if ($r.StatusCode -lt 300 -or $r.StatusCode -ge 400 -or "$($r.Headers.Location)" -notmatch "/mock$") { throw "$from should lead to /mock, got $($r.StatusCode) $($r.Headers.Location)" }
+            $answer = curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" "http://localhost:3100$from"
+            if ($answer -notmatch "^3\d\d http://localhost:3100/mock$") { throw "$from should lead to /mock, got: $answer" }
+            Write-Host "$from -> $answer"
           }
           $landing = Invoke-WebRequest http://localhost:3100/mock -UseBasicParsing
           if ($landing.Content -notmatch "Windows Check Center") { throw "The candidate site doesn't show the center" }
