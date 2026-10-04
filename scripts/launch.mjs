@@ -1,6 +1,8 @@
 // Starts BIS Learn on this computer. Used by START-HERE-Windows.bat and START-HERE-Mac.command.
 // First run: asks for the admin's email and password, installs the packages, creates the database
 // and builds the site (a few minutes). Later runs start in seconds. Opens http://localhost:3000.
+// With BIS_APP=mock (the CD IELTS Mock zip's START-HERE-CD-Mock files) the same program runs as the
+// CD IELTS mock site on its own, at http://localhost:3100 so both can run on one computer.
 // While the site runs, it checks GitHub for a newer version every few minutes and installs it by
 // itself (see update.mjs); refreshing the browser then shows the new version.
 //
@@ -16,9 +18,12 @@ import path from "node:path";
 import { askOwnerDetails, EXIT } from "./owner.mjs";
 import { findUpdate, install, undo, updatesOff } from "./update.mjs";
 
+loadEnv(); // e.g. BIS_APP="mock" in a CD IELTS Mock copy, however it is started
 const SERVER = process.env.BIS_SERVER === "1";
 const PREPARE_ONLY = process.argv.includes("--prepare");
-const PORT = Number(process.env.PORT) || 3000;
+const MOCK = process.env.BIS_APP === "mock";
+const APP = MOCK ? "CD IELTS Mock" : "BIS Learn";
+const PORT = Number(process.env.PORT) || (MOCK ? 3100 : 3000);
 const HOST = SERVER ? "127.0.0.1" : "localhost";
 const URL = `http://${HOST}:${PORT}`;
 /** Exit code telling the start-here files that the site was already running and was only opened. */
@@ -174,7 +179,7 @@ async function buildIfNeeded() {
       rmSync(".next", { recursive: true, force: true });
     }
   }
-  say(`The whole error is saved in ${BUILD_LOG} in the BIS Learn folder (it opens now). Send that file to the person helping you.`);
+  say(`The whole error is saved in ${BUILD_LOG} in the ${APP} folder (it opens now). Send that file to the person helping you.`);
   showFile(BUILD_LOG);
   return false;
 }
@@ -238,7 +243,7 @@ if (!noUpdates) {
   try {
     const update = await findUpdate();
     if (update) {
-      say(`A new version of BIS Learn is available (${update.short}).`);
+      say(`A new version of ${APP} is available (${update.short}).`);
       if (await applyUpdate(update)) say("✓ Updated to the newest version.");
     }
   } catch (error) {
@@ -248,7 +253,7 @@ if (!noUpdates) {
 
 if (!(await buildIfNeeded())) stop(`Building the site failed. Send the file ${BUILD_LOG} (or a photo of this window) to the person helping you.`);
 if (PREPARE_ONLY) {
-  say("✓ BIS Learn is ready to start.");
+  say(`✓ ${APP} is ready to start.`);
   process.exit(0);
 }
 
@@ -283,10 +288,10 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 const UPDATING_PAGE = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="8"><title>BIS Learn is updating…</title><style>
+<meta http-equiv="refresh" content="8"><title>${APP} is updating…</title><style>
 :root{color-scheme:light dark;font-family:system-ui,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:Canvas;color:CanvasText;text-align:center}
 .s{width:40px;height:40px;margin:0 auto 20px;border:4px solid #2563eb33;border-top-color:#2563eb;border-radius:50%;animation:r 1s linear infinite}@keyframes r{to{transform:rotate(1turn)}}
-p{opacity:.7;margin:.4em 1em}</style></head><body><main><div class="s"></div><h1>BIS Learn is updating…</h1>
+p{opacity:.7;margin:.4em 1em}</style></head><body><main><div class="s"></div><h1>${APP} is updating…</h1>
 <p>A new version is being installed. This page reloads by itself in a minute or two.</p>
 <p>Yangi versiya oʻrnatilmoqda. Sahifa bir-ikki daqiqada oʻzi qayta yuklanadi.</p></main></body></html>`;
 
@@ -311,7 +316,7 @@ async function updateWhileRunning() {
   }
   if (!update || updating || stopping || !server) return;
   updating = true;
-  say(`A new version of BIS Learn is available (${update.short}). Updating now — the site is back in a minute or two.`);
+  say(`A new version of ${APP} is available (${update.short}). Updating now — the site is back in a minute or two.`);
   await stopServer();
   const hideUpdatingPage = showUpdatingPage();
   const updated = await applyUpdate(update);
@@ -320,7 +325,7 @@ async function updateWhileRunning() {
   if (stopping) process.exit(0);
   startServer();
   await waitUntilUp();
-  say(updated ? "✓ BIS Learn was updated. Refresh the page in your browser to see what's new." : "The update didn't work, so the site is running the previous version.");
+  say(updated ? `✓ ${APP} was updated. Refresh the page in your browser to see what's new.` : "The update didn't work, so the site is running the previous version.");
 }
 
 if (SERVER) say(`Starting the site at ${URL} (the web server serves it on your domain).`);
@@ -330,7 +335,8 @@ if (SERVER) await waitUntilUp();
 else if (await waitUntilUp()) {
   openBrowser();
   const phone = phoneUrl();
-  if (phone) say(`On phones and tablets on the same Wi-Fi, open ${phone} (the admin overview also shows a QR code).\nIf Windows asks about Node.js, click "Allow access".`);
+  if (phone && MOCK) say(`Candidates on other computers on the same Wi-Fi open ${phone}\nIf Windows asks about Node.js, click "Allow access".`);
+  else if (phone) say(`On phones and tablets on the same Wi-Fi, open ${phone} (the admin overview also shows a QR code).\nIf Windows asks about Node.js, click "Allow access".`);
 }
 if (noUpdates) say(`Automatic updates are off: ${noUpdates}.`);
 else setInterval(updateWhileRunning, UPDATE_EVERY_MS);

@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
 import { PLATFORM_NAME } from "@/lib/brand";
+import { MOCK_ONLY } from "@/lib/app-mode";
 
 // Lets phones add the site to the home screen as an app: its own icon, full screen, no browser bars.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: PLATFORM_NAME,
-    short_name: PLATFORM_NAME,
-    description: "Lessons, practice questions, mock tests and vocabulary from your learning center.",
-    start_url: "/",
+    name: MOCK_ONLY ? "CD IELTS Mock" : PLATFORM_NAME,
+    short_name: MOCK_ONLY ? "CD Mock" : PLATFORM_NAME,
+    description: MOCK_ONLY ? "Computer-delivered IELTS mock tests at your learning center." : "Lessons, practice questions, mock tests and vocabulary from your learning center.",
+    start_url: MOCK_ONLY ? "/mock" : "/",
     scope: "/",
     display: "standalone",
     background_color: "#f5f7fb",

@@ -125,3 +125,98 @@ jobs:
             C:\bis\turbopack.log
             C:\bis\bis-learn\build-log.txt
           if-no-files-found: ignore
+
+  # The CD IELTS Mock zip on its own: START-HERE-CD-Mock-Windows.bat as a standard user, then checks
+  # that only the mock site runs, at port 3100.
+  cd-mock:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      BIS_ADMIN_EMAIL: admin@windows-check.example
+      BIS_ADMIN_PASSWORD: windows-check-1
+      USER_NAME: bischeck
+      USER_PASSWORD: Bis-Check-26!x # at most 14 characters, or `net user` stops to ask a question
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Make the CD IELTS Mock zip and unzip it to C:\cdm
+        shell: pwsh
+        run: |
+          node scripts/make-zip.mjs --mock HEAD C:\cd-ielts-mock.zip
+          New-Item -ItemType Directory C:\cdm | Out-Null
+          Expand-Archive C:\cd-ielts-mock.zip -DestinationPath C:\cdm
+          if (-not (Test-Path C:\cdm\cd-ielts-mock\START-HERE-CD-Mock-Windows.bat)) { throw "The CD mock start file is missing" }
+          if (Test-Path C:\cdm\cd-ielts-mock\START-HERE-Windows.bat) { throw "BIS Learn's start file is in the CD mock zip" }
+
+      - name: Create a standard Windows user (no administrator rights)
+        shell: pwsh
+        run: |
+          net user $env:USER_NAME $env:USER_PASSWORD /add
+          if ($LASTEXITCODE) { throw "Could not create the user" }
+          net localgroup "Performance Log Users" $env:USER_NAME /add
+          if ($LASTEXITCODE) { throw "Could not add the user to Performance Log Users" }
+          icacls C:\cdm /grant "$($env:USER_NAME):(OI)(CI)F" /T /Q
+          if ($LASTEXITCODE) { throw "Could not give the user the C:\cdm folder" }
+
+      - name: Double-click START-HERE-CD-Mock-Windows.bat as that user
+        shell: pwsh
+        run: |
+          $nodeDir = Split-Path (Get-Command node).Source
+          @"
+          @echo off
+          set "PATH=$nodeDir;%PATH%"
+          set "BIS_ADMIN_EMAIL=$env:BIS_ADMIN_EMAIL"
+          set "BIS_ADMIN_PASSWORD=$env:BIS_ADMIN_PASSWORD"
+          set "BIS_ADMIN_NAME=Windows Check"
+          set "BIS_CENTER_NAME=Windows Check Center"
+          set "npm_config_cache=C:\cdm\npm-cache"
+          set "BIS_UPDATES=off"
+          call C:\cdm\cd-ielts-mock\START-HERE-CD-Mock-Windows.bat < NUL > C:\cdm\launch.log 2>&1
+          "@ | Set-Content -Encoding ascii C:\cdm\start.cmd
+          $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\cdm\start.cmd"
+          Register-ScheduledTask -TaskName CdmStart -Action $action -User $env:USER_NAME -Password $env:USER_PASSWORD -RunLevel Limited | Out-Null
+          Start-ScheduledTask -TaskName CdmStart
+
+          $deadline = (Get-Date).AddMinutes(25)
+          $up = $false
+          do {
+            Start-Sleep -Seconds 10
+            try { $up = (Invoke-WebRequest http://localhost:3100/mock/staff -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200 } catch {}
+            $failed = (Test-Path C:\cdm\launch.log) -and (Select-String -Path C:\cdm\launch.log -Pattern "could not start" -Quiet)
+          } until ($up -or $failed -or (Get-Date) -gt $deadline)
+          Get-Content C:\cdm\launch.log -Tail 40
+          if (Test-Path C:\cdm\cd-ielts-mock\build-log.txt) { Write-Host "--- build-log.txt ---"; Get-Content C:\cdm\cd-ielts-mock\build-log.txt -Tail 80 }
+          if (-not $up) { throw "The CD mock site did not start" }
+
+      - name: Check that only the CD mock site runs
+        shell: pwsh
+        run: |
+          if (-not (Select-String -Path C:\cdm\cd-ielts-mock\.env -Pattern '^BIS_APP="mock"' -Quiet)) { throw ".env does not keep BIS_APP=mock" }
+          # curl.exe (part of Windows) shows the redirect itself; Invoke-WebRequest stops with an error on it.
+          foreach ($from in "/", "/dashboard", "/admin") {
+            $answer = curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" "http://localhost:3100$from"
+            if ($answer -notmatch "^3\d\d http://localhost:3100/mock$") { throw "$from should lead to /mock, got: $answer" }
+            Write-Host "$from -> $answer"
+          }
+          $landing = Invoke-WebRequest http://localhost:3100/mock -UseBasicParsing
+          if ($landing.Content -notmatch "Windows Check Center") { throw "The candidate site doesn't show the center" }
+          if ($landing.Content -match "BIS Learn") { throw "The candidate site mentions BIS Learn" }
+          $staff = Invoke-WebRequest http://localhost:3100/mock/staff -UseBasicParsing
+          if ($staff.Content -notmatch "Staff sign-in") { throw "No staff sign-in page" }
+          Write-Host "The CD IELTS Mock site runs on its own at http://localhost:3100"
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-cd-mock-logs
+          path: |
+            C:\cdm\launch.log
+            C:\cdm\cd-ielts-mock\build-log.txt
+          if-no-files-found: ignore

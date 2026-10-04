@@ -12,6 +12,7 @@ import { centerSignupOpen } from "@/lib/signup";
 import { randomCode, slugify } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import { getT } from "@/lib/i18n/server";
+import { MOCK_ONLY, STAFF_LOGIN } from "@/lib/app-mode";
 
 export type FormState = { error?: string; ok?: string } | null;
 
@@ -142,7 +143,7 @@ export async function registerCenter(_: FormState, formData: FormData): Promise<
 /** First start on a new install: the person setting up creates the center and their own admin password. */
 export async function setupFirstCenter(_: FormState, formData: FormData): Promise<FormState> {
   const t = await getT();
-  if ((await db.user.count()) > 0) redirect("/login");
+  if ((await db.user.count()) > 0) redirect(STAFF_LOGIN);
   const parsed = z
     .object({ ...centerFields(t), confirm: z.string() })
     .refine((d) => d.password === d.confirm, { message: t.validation.passwordsDiffer })
@@ -150,10 +151,10 @@ export async function setupFirstCenter(_: FormState, formData: FormData): Promis
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   // The person installing the site owns it: they also get the platform settings.
   await createCenterWithAdmin(t, parsed.data, true);
-  redirect("/admin?welcome=1");
+  redirect(MOCK_ONLY ? "/mock/admin" : "/admin?welcome=1");
 }
 
 export async function logout() {
   await deleteSession();
-  redirect("/login");
+  redirect(STAFF_LOGIN);
 }

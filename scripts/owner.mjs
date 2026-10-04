@@ -91,11 +91,19 @@ export async function askOwnerDetails({ allowDemo = false } = {}) {
     if (!email || !password) return null;
     return { email: email.toLowerCase(), password, name: process.env.BIS_ADMIN_NAME || "Admin", centerName: process.env.BIS_CENTER_NAME || DEFAULT_CENTER };
   }
-  console.log(`
+  if (process.env.BIS_APP === "mock") {
+    console.log(`
+  Welcome to CD IELTS Mock! First, create the admin account.
+  This person controls everything: tests, candidates, examiners and all settings.
+  You will log in on the website (Staff sign-in) with this email and password.`);
+    if (allowDemo) console.log("  (To look around a demo center with sample candidates instead, type demo and press Enter.)");
+  } else {
+    console.log(`
   Welcome to BIS Learn! First, create the admin account.
   This person controls everything: the center, teachers, students, invite codes and all settings.
   You will log in on the website with this email and password.`);
-  if (allowDemo) console.log("  (To look around a demo center with sample students instead, type demo and press Enter.)");
+    if (allowDemo) console.log("  (To look around a demo center with sample students instead, type demo and press Enter.)");
+  }
   console.log();
   let email;
   for (;;) {

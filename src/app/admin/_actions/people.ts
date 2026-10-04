@@ -224,6 +224,7 @@ export async function createStaff(_: ActionState, fd: FormData): Promise<ActionS
   });
   const loginId = await ensureTeacherId(user);
   revalidatePath("/admin/staff");
+  revalidatePath("/mock/admin/staff");
   return { ok: loginId ? fmt(t.staff.createdTeacher, { id: loginId, email: d.email, password }) : fmt(t.staff.created, { email: d.email, password }) };
 }
 
@@ -233,4 +234,5 @@ export async function removeStaff(userId: string) {
   // The owner who installed the site can't be removed by another admin.
   await db.user.deleteMany({ where: { id: userId, centerId: admin.centerId, role: { in: ["TEACHER", "CENTER_ADMIN"] }, isOwner: false } });
   revalidatePath("/admin/staff");
+  revalidatePath("/mock/admin/staff");
 }
