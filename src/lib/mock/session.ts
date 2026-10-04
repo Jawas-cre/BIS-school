@@ -6,11 +6,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { key, servedOverHttps } from "@/lib/session";
+import { COOKIE_PREFIX } from "@/lib/app-mode";
 import { ownerCenter } from "@/lib/site";
 
 // CD mock candidates have their own accounts and their own cookie, separate from BIS Learn's.
 // The audience claim keeps a BIS Learn session from ever being accepted here, and the other way round.
-const COOKIE = "mock_session";
+const COOKIE = `${COOKIE_PREFIX}mock_session`;
 const AUDIENCE = "bis-mock";
 const DAYS = 30;
 

@@ -18,6 +18,13 @@ if (existsSync(".env")) {
   console.log("✓ Created .env with a random SESSION_SECRET");
 }
 
+// The CD IELTS Mock zip starts with BIS_APP=mock; .env keeps it, so the site stays the mock-only
+// site however it is started (e.g. npm run dev).
+if (process.env.BIS_APP === "mock" && !/^BIS_APP=/m.test(readFileSync(".env", "utf8"))) {
+  writeFileSync(".env", `${readFileSync(".env", "utf8").trimEnd()}\n\n# This copy is the CD IELTS mock site on its own.\nBIS_APP="mock"\n`);
+  console.log('✓ Added BIS_APP="mock" to .env');
+}
+
 // The default SQLite database lives in prisma/dev.db (DATABASE_URL="file:./dev.db").
 const hadDatabase = existsSync("prisma/dev.db");
 

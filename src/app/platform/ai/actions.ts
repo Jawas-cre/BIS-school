@@ -38,6 +38,7 @@ export async function saveAiSettings(_: ActionState, fd: FormData): Promise<Acti
   if (d.claudeKey) await save("claudeKey", d.claudeKey);
   if (d.omnirouteKey) await save("omnirouteKey", d.omnirouteKey);
   revalidatePath("/platform/ai");
+  revalidatePath("/mock/admin/settings");
   return { ok: P.saved };
 }
 

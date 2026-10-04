@@ -1,6 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies, headers } from "next/headers";
+import { COOKIE_PREFIX } from "@/lib/app-mode";
 
 export type Role = "SUPER_ADMIN" | "CENTER_ADMIN" | "TEACHER" | "STUDENT";
 
@@ -11,7 +12,7 @@ export type SessionPayload = {
   expiresAt: string;
 };
 
-const COOKIE = "session";
+export const SESSION_COOKIE = `${COOKIE_PREFIX}session`;
 const MAX_AGE_DAYS = 30;
 
 export function key() {
@@ -57,7 +58,7 @@ export async function createSession(user: { id: string; role: string; centerId: 
     centerId: user.centerId,
     expiresAt: expires.toISOString(),
   });
-  (await cookies()).set(COOKIE, token, {
+  (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: await servedOverHttps(),
     sameSite: "lax",
@@ -67,9 +68,9 @@ export async function createSession(user: { id: string; role: string; centerId: 
 }
 
 export async function readSession() {
-  return decrypt((await cookies()).get(COOKIE)?.value);
+  return decrypt((await cookies()).get(SESSION_COOKIE)?.value);
 }
 
 export async function deleteSession() {
-  (await cookies()).delete(COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }

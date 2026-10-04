@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { PLATFORM_NAME } from "@/lib/brand";
+import { MOCK_ONLY } from "@/lib/app-mode";
 import { I18nProvider } from "@/lib/i18n/client";
 import { PressFeedback } from "@/components/press-feedback";
 import { getI18n } from "@/lib/i18n/server";
@@ -12,6 +13,13 @@ const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
+  if (MOCK_ONLY) {
+    return {
+      title: { default: t.mock.brand, template: `%s · ${t.mock.brand}` },
+      description: t.mock.landingText,
+      appleWebApp: { capable: true, title: t.mock.brand, statusBarStyle: "default" },
+    };
+  }
   return {
     title: { default: `${PLATFORM_NAME} — ${t.landing.tagline}`, template: `%s · ${PLATFORM_NAME}` },
     description: t.landing.metaDescription,

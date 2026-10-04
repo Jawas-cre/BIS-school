@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { db } from "@/lib/db";
+import { MOCK_ONLY } from "@/lib/app-mode";
 import { requireStaff } from "@/lib/auth";
 import { readContent, readWriting, mediaUrl } from "@/lib/mock/tests";
 import { SPEAKING_CRITERIA, WRITING_CRITERIA, type SpeakingMarks, type WritingMarks } from "@/lib/mock/score";
@@ -129,7 +130,7 @@ export default async function MarkAttempt({ params }: PageProps<"/mock/admin/res
         />
         <CardBody className="text-sm">
           {!aiOn ? (
-            <p className="text-muted">{A.aiOff}</p>
+            <p className="text-muted">{MOCK_ONLY ? A.aiOffMock : A.aiOff}</p>
           ) : !ai ? (
             <p className="text-muted">{A.aiPending}</p>
           ) : ai.error ? (

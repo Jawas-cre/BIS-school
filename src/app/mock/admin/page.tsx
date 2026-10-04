@@ -17,7 +17,7 @@ export default async function MockResults({ searchParams }: PageProps<"/mock/adm
   const A = t.mockAdmin;
   const M = t.mock;
   const show = sp.show === "all" ? "all" : "marking";
-  const [attempts, toMark] = await Promise.all([
+  const [attempts, toMark, tests] = await Promise.all([
     db.mockAttempt.findMany({
       where: { centerId: staff.centerId, ...(show === "marking" ? { section: "DONE", released: false } : {}) },
       orderBy: { startedAt: "desc" },
@@ -25,6 +25,7 @@ export default async function MockResults({ searchParams }: PageProps<"/mock/adm
       include: { candidate: { select: { name: true, number: true } }, test: { select: { title: true } } },
     }),
     db.mockAttempt.count({ where: { centerId: staff.centerId, section: "DONE", released: false } }),
+    db.mockTest.count({ where: { centerId: staff.centerId } }),
   ]);
   const tabs = [
     { key: "marking", label: A.toMark, n: toMark, href: "/mock/admin" },
@@ -33,6 +34,15 @@ export default async function MockResults({ searchParams }: PageProps<"/mock/adm
   return (
     <div className="space-y-5">
       <PageHeader title={A.navResults} subtitle={A.resultsSubtitle} />
+      {tests === 0 && (
+        // A new copy: the first step is a test for candidates to take.
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft p-4 text-sm">
+          <p className="min-w-0 flex-1 font-semibold">{A.noTests}</p>
+          <Link href="/mock/admin/tests" className="rounded-xl bg-brand px-3 py-2 font-semibold text-white hover:bg-brand-strong">
+            {A.navTests} →
+          </Link>
+        </div>
+      )}
       <div className="flex gap-1">
         {tabs.map((tab) => (
           <Link key={tab.key} href={tab.href} className={cn("rounded-xl px-3 py-1.5 text-sm font-semibold", show === tab.key ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2")}>

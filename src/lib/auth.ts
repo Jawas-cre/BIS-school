@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { readSession, type Role } from "@/lib/session";
+import { MOCK_ONLY, STAFF_LOGIN } from "@/lib/app-mode";
 
 /** The signed-in user (with center), or null. Deduplicated per request. */
 export const getCurrentUser = cache(async () => {
@@ -22,7 +23,7 @@ export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>
 
 export async function requireUser() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(STAFF_LOGIN);
   return user;
 }
 
@@ -82,6 +83,8 @@ export function panelBase(role: string) {
 }
 
 export function homeFor(role: string) {
+  // The CD mock on its own site has only its staff area and its candidate site.
+  if (MOCK_ONLY) return isStaff(role) ? "/mock/admin" : "/mock";
   if (role === "SUPER_ADMIN") return "/platform";
   if (isStaff(role)) return panelBase(role);
   return "/dashboard";
