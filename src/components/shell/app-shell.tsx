@@ -30,6 +30,7 @@ import {
   ClipboardList,
   Globe,
   Inbox,
+  Headphones,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { LanguageMenu } from "@/components/language-menu";
@@ -62,6 +63,7 @@ const ICONS = {
   ClipboardList,
   Globe,
   Inbox,
+  Headphones,
 };
 
 export type ShellUser = {

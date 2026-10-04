@@ -4,8 +4,9 @@ import * as landing from "./messages/landing";
 import * as auth from "./messages/auth";
 import * as student from "./messages/student";
 import * as admin from "./messages/admin";
+import * as mock from "./messages/mock";
 
-const namespaces = { ...common, ...landing, ...auth, ...student, ...admin };
+const namespaces = { ...common, ...landing, ...auth, ...student, ...admin, ...mock };
 
 type Namespaces = typeof namespaces;
 export type Dict = { [K in keyof Namespaces]: Namespaces[K]["en"] };

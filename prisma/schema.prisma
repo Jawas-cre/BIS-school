@@ -45,6 +45,9 @@ model Center {
   news        NewsPost[]
   siteItems   SiteItem[]
   leads       Lead[]
+  mockTests      MockTest[]
+  mockFiles      MockFile[]
+  mockCandidates MockCandidate[]
 }
 
 model Branch {
@@ -605,4 +608,85 @@ model Lead {
   center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
 
   @@index([centerId, status])
+}
+
+// ─── CD IELTS mock (/mock) ──────────────────────────────────────────────────
+// A separate exam app with its own candidate accounts; center staff manage it at /mock/admin.
+
+model MockTest {
+  id        String   @id @default(cuid())
+  centerId  String
+  title     String
+  module    String   @default("ACADEMIC") // ACADEMIC | GENERAL_TRAINING (picks the reading band table)
+  content   String // JSON, see src/lib/mock/format.ts
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  center   Center        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  attempts MockAttempt[]
+
+  @@index([centerId])
+}
+
+/// An uploaded listening recording or writing task picture; the bytes live in data/mock-files/<id>.
+model MockFile {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String
+  mime      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId])
+}
+
+model MockCandidate {
+  id        String   @id @default(cuid())
+  centerId  String
+  number    String   @unique // candidate number, e.g. "100245"
+  name      String
+  phone     String?
+  pinHash   String
+  createdAt DateTime @default(now())
+
+  center   Center        @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  attempts MockAttempt[]
+
+  @@unique([centerId, phone])
+  @@index([centerId])
+}
+
+model MockAttempt {
+  id               String    @id @default(cuid())
+  centerId         String
+  testId           String
+  candidateId      String
+  section          String    @default("LISTENING") // LISTENING | READING | WRITING | DONE
+  sectionStartedAt DateTime? // when the candidate pressed Start on the current section
+  sectionEndsAt    DateTime? // when its time runs out
+  answers          String    @default("{}") // JSON: { L: { number: answer }, R: { number: answer } }
+  writing          String    @default("{}") // JSON: { "1": text, "2": text }
+  listeningRaw     Int?
+  readingRaw       Int?
+  listeningBand    Float?
+  readingBand      Float?
+  writingMarks     String? // JSON: the marker's criteria per task and comment
+  writingAi        String? // JSON: the AI's estimate
+  writingBand      Float?
+  speakingMarks    String? // JSON: the examiner's criteria and comment
+  speakingBand     Float?
+  overallBand      Float?
+  released         Boolean   @default(false) // writing, speaking and overall bands visible to the candidate
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+
+  test      MockTest      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  candidate MockCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([testId])
+  @@index([centerId, finishedAt])
 }

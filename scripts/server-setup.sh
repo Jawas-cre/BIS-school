@@ -10,7 +10,8 @@
 # What it does: installs Node.js and the Caddy web server (which gets and renews the HTTPS
 # certificate), downloads BIS Learn into /opt/bis-learn, asks for the admin's email and password,
 # builds the site and runs it as a service that starts with the server and updates itself from
-# GitHub like the laptop version. The database is backed up every night to /var/backups/bis-learn.
+# GitHub like the laptop version. The database and uploaded files are backed up every night to
+# /var/backups/bis-learn.
 # Running it again is safe: it keeps your data and only refreshes the settings (e.g. a new domain).
 set -euo pipefail
 
@@ -122,13 +123,15 @@ if resolves_here "www.$DOMAIN"; then WWW=1; else WWW=0; fi
 } > /etc/caddy/Caddyfile
 systemctl reload caddy 2>/dev/null || systemctl restart caddy
 
-say "6/6  Nightly backups of the database…"
-mkdir -p /var/backups/bis-learn
+say "6/6  Nightly backups of the database and uploaded files…"
+mkdir -p /var/backups/bis-learn/files
 cat > /etc/cron.daily/bis-learn-backup <<EOF
 #!/bin/sh
-# Keeps the last 14 nightly copies of the BIS Learn database.
+# Keeps the last 14 nightly copies of the BIS Learn database, and a copy of every uploaded file
+# (CD mock recordings and pictures never change once uploaded, so new ones are simply added).
 sqlite3 $APP/prisma/dev.db ".backup /var/backups/bis-learn/bis-learn-\$(date +%F).db"
 find /var/backups/bis-learn -name 'bis-learn-*.db' -mtime +14 -delete
+if [ -d $APP/data ]; then cp -a -u $APP/data/. /var/backups/bis-learn/files/; fi
 EOF
 chmod 755 /etc/cron.daily/bis-learn-backup
 

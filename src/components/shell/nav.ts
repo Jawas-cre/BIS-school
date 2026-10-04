@@ -31,6 +31,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/news", label: "announcements", icon: "Megaphone" },
   { href: "/admin/staff", label: "staff", icon: "ShieldCheck" },
   { href: "/admin/website", label: "website", icon: "Globe" },
+  { href: "/mock/admin", label: "cdMock", icon: "Headphones" },
   { href: "/admin/settings", label: "settings", icon: "Settings" },
 ];
 
@@ -45,6 +46,7 @@ export const TEACHER_NAV: NavItem[] = [
   { href: "/teacher/vocabulary", label: "vocabulary", icon: "Languages" },
   { href: "/teacher/library", label: "library", icon: "Library" },
   { href: "/teacher/news", label: "announcements", icon: "Megaphone" },
+  { href: "/mock/admin", label: "cdMock", icon: "Headphones" },
 ];
 
 export const PLATFORM_NAV: NavItem[] = [
