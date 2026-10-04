@@ -49,3 +49,4 @@ next-env.d.ts
 /.bis-version.json
 /bis-learn.zip
 /build-log.txt
+/data/

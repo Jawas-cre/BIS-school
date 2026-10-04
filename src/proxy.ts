@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { decrypt } from "@/lib/session";
 
-const PUBLIC_PREFIXES = ["/login", "/register", "/join", "/setup", "/c/"];
+// /mock is the CD IELTS mock app: it checks its own candidate login (and staff pages check BIS Learn's).
+const PUBLIC_PREFIXES = ["/login", "/register", "/join", "/setup", "/c/", "/mock"];
 
 // Optimistic auth check only; every page and action re-verifies through the DAL.
 export async function proxy(req: NextRequest) {

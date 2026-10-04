@@ -5,6 +5,11 @@ import { generateEnglish } from "./rw";
 import { generateArithmetic, generateBiology, generateChemistry, generateComputerScience, generateHistory, generatePhysics } from "./science";
 import { UNIVERSITIES } from "./universities";
 import { LIBRARY, PLATFORM_NEWS, ROADMAP, SUBJECTS, VOCAB_DECKS } from "./content";
+import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import path from "node:path";
+import { SAMPLE_CONTENT, SAMPLE_TASK1_IMAGE, SAMPLE_TITLE } from "../../src/lib/mock/sample";
+import { parseSection } from "../../src/lib/mock/format";
+import { band, markAll } from "../../src/lib/mock/score";
 
 const db = new PrismaClient();
 // `--no-demo`: only the shared learning content, no demo center or accounts. The first visitor then
@@ -47,6 +52,10 @@ async function reset() {
   await db.branch.deleteMany();
   await db.siteItem.deleteMany();
   await db.lead.deleteMany();
+  await db.mockAttempt.deleteMany();
+  await db.mockCandidate.deleteMany();
+  await db.mockTest.deleteMany();
+  await db.mockFile.deleteMany();
   await db.center.deleteMany();
   await db.university.deleteMany();
 }
@@ -549,12 +558,62 @@ async function main() {
     ],
   });
 
+  console.log("CD IELTS mock…");
+  // The sample test, two candidates, and one finished test waiting for an examiner (/mock/admin).
+  const content = structuredClone(SAMPLE_CONTENT);
+  if (existsSync(SAMPLE_TASK1_IMAGE)) {
+    const chart = await db.mockFile.create({ data: { centerId: center.id, name: "sample-task1.png", mime: "image/png", size: statSync(SAMPLE_TASK1_IMAGE).size } });
+    mkdirSync(path.join("data", "mock-files"), { recursive: true });
+    copyFileSync(SAMPLE_TASK1_IMAGE, path.join("data", "mock-files", chart.id));
+    content.writing[0].imageId = chart.id;
+  }
+  const mockTest = await db.mockTest.create({ data: { centerId: center.id, title: SAMPLE_TITLE, module: "ACADEMIC", content: JSON.stringify(content), published: true } });
+  const pin = await bcrypt.hash("1234", 10);
+  await db.mockCandidate.create({ data: { centerId: center.id, number: "100001", name: "Aziza Karimova", phone: "+998901110001", pinHash: pin } });
+  const dilshod = await db.mockCandidate.create({ data: { centerId: center.id, number: "100002", name: "Dilshod Yusupov", phone: "+998901110002", pinHash: pin } });
+  // His answers: most right, a few wrong, as a typical band-6 candidate.
+  const lKey = parseSection(SAMPLE_CONTENT.listening.map((p) => p.questions)).key;
+  const rKey = parseSection(SAMPLE_CONTENT.reading.map((p) => p.questions)).key;
+  const answer = (key: typeof lKey, wrongEvery: number) =>
+    Object.fromEntries(
+      Object.entries(key).flatMap(([n, k]) => {
+        if (Number(n) % wrongEvery === 0) return [[n, k.kind === "gap" ? "dont know" : k.kind === "judge" ? "NOT GIVEN" : "A"]];
+        if (k.kind === "gap") return [[n, k.answers[0]]];
+        if (k.kind === "multi") return Number(n) === k.ns[0] ? [[n, k.answers.join(",")]] : [];
+        return [[n, k.answer]];
+      }),
+    );
+  const L = answer(lKey, 4);
+  const R = answer(rKey, 3);
+  const lm = markAll(lKey, L);
+  const rm = markAll(rKey, R);
+  await db.mockAttempt.create({
+    data: {
+      centerId: center.id,
+      testId: mockTest.id,
+      candidateId: dilshod.id,
+      section: "DONE",
+      answers: JSON.stringify({ L, R }),
+      writing: JSON.stringify({
+        "1": "The bar chart compares the main ways people travelled to work in a European city in 1990 and 2020. Overall, the car remained the most common way to commute, but its share fell, while cycling and the train became much more popular.\n\nIn 1990, more than half of workers (52%) drove to work. By 2020 this figure had dropped to 38%, although driving was still the most popular choice. The bus and walking also became less common, falling from 18% to 14% and from 16% to 12% respectively.\n\nIn contrast, the proportion of people who cycled rose more than threefold, from just 6% to 19%, making the bicycle the second most popular way to travel in 2020. The train also grew in popularity, more than doubling from 8% to 17%.\n\nIn summary, although cars were still dominant, the city moved towards cycling and rail over the thirty years.",
+        "2": "In many countries young people go straight from school to university or work. Some people think they should first spend some time doing unpaid work in their community. I partly agree with this idea, because it has clear benefits, but I do not think it should be compulsory for everyone.\n\nOn the one hand, community work teaches young people skills that school does not. For example, helping in a hospital or cleaning a park teaches responsibility and teamwork. Students also meet people from different backgrounds, which makes them more understanding. In addition, communities get help with important jobs that are often underfunded.\n\nOn the other hand, making it compulsory could cause problems. Some families need their children to start earning money as soon as possible, and a year without pay would be very difficult for them. Also, people who are forced to volunteer may not work hard, so the quality of the help could be low.\n\nIn conclusion, I believe community service is valuable and governments should encourage it, for example by giving university places or small grants to volunteers, but it should remain a free choice.",
+      }),
+      listeningRaw: lm.raw,
+      readingRaw: rm.raw,
+      listeningBand: band("LISTENING", lm.raw, lm.total),
+      readingBand: band("READING", rm.raw, rm.total),
+      startedAt: new Date(Date.now() - DAY - 3 * 3_600_000),
+      finishedAt: new Date(Date.now() - DAY),
+    },
+  });
+
   console.log("\nDone. Demo logins (password: password123):");
   console.log("  student@demo.uz    – student");
   console.log("  teacher@demo.uz    – teacher (or log in with the teacher ID T1001)");
   console.log("  admin@demo.uz      – center admin");
   console.log("  Invite codes: DEMO24 (students), MATH9A (students, joins Mathematics · Grade 9 A), TEACH24 (teachers)");
   console.log("  owner@bislearn.uz  – platform owner");
+  console.log("  CD IELTS mock (/mock): candidates 100001 and 100002, PIN 1234");
 }
 
 main()

@@ -85,6 +85,41 @@ panel under *Applications*. It uses the center's accent color, English/Uzbek and
 Platform content (subjects, questions, tests, roadmaps, decks, library) is shared with every center;
 anything a center creates is visible only to that center.
 
+### CD IELTS mock (`/mock`)
+A separate app for computer-delivered IELTS mock exams, with its own address, look and accounts —
+candidates never see BIS Learn menus. Open `/mock` (or `/mock?c=<center>`; on your own copy the
+center is picked for you).
+
+- **Candidates** register with their name, phone and a PIN, or the center adds them and hands over a
+  6-digit **candidate number** and PIN. They log in with either the number or the phone. After 10
+  wrong PINs in 15 minutes the account is locked until the time passes or staff give a new PIN.
+- **The exam screen** works like the real computer-delivered test: confirm your details, a sound
+  check, then **Listening** (about 30 minutes, the recording plays once, then 2 minutes to check),
+  **Reading** (60 minutes, passage and questions side by side, highlight words in the passage) and
+  **Writing** (60 minutes, word counter). A timer, question navigator, "Review" flags, text size
+  and contrast settings, hide screen and help. Answers save every few seconds; closing the browser
+  or a power cut doesn't lose them, and the time keeps running on the server like a real exam.
+  When a section's time is up it is handed in automatically.
+- **Results** — Listening and Reading are marked at once with the official band tables (Academic
+  or General Training). The AI tutor (if one is set up under `/platform/ai`) gives a Writing
+  estimate for each criterion; an examiner confirms or changes it, adds the **Speaking** marks after
+  the face-to-face interview, and releases the full report. The candidate then sees all four bands,
+  the overall band, feedback, and their Listening/Reading answers next to the correct ones (with the
+  transcript).
+- **Staff area** (`/mock/admin`, also in the admin and teacher menus as *CD IELTS mock*): *Results*
+  (to mark / all), *Tests* and *Candidates*. Teachers can mark, edit tests and add candidates;
+  deleting tests and candidates is for center admins.
+- **Tests** are written in a simple text format with a live preview (*How to write questions* in the
+  editor has the full example): `## Questions 1–5` starts a group, `[answer|other answer]` is a gap,
+  `? question` with `A. option *` is multiple choice (two `*` = choose TWO), `? statement = TRUE`
+  is TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN, `Options:` with `? item = B` is matching. Each
+  Listening part takes an uploaded **recording** (MP3, M4A, WAV, …) or a **script** that the
+  computer reads aloud in different voices; Writing Task 1 takes a picture of the chart.
+  *Add the sample test* adds a complete original Academic test (40 + 40 questions and two Writing
+  tasks) whose Listening is read by the computer voice.
+- Uploaded recordings and pictures are stored in the `data/` folder next to the database; updates
+  keep it, and on a server it is backed up every night with the database.
+
 ### Who can open what
 
 | Area | Student | Teacher | Center admin | Owner (installed the site) | Platform admin |
@@ -94,6 +129,9 @@ anything a center creates is visible only to that center.
 | Teacher panel (`/teacher`) — own groups and students, content | — | ✓ | — | — | — |
 | Admin panel (`/admin`) — everything in the center, including Applications and Website | — | — | ✓ | ✓ | — |
 | Platform settings (`/platform`) | — | — | — | ✓ | ✓ |
+| CD IELTS mock staff area (`/mock/admin`) — marking, tests, candidates | — | ✓ | ✓ | ✓ | — |
+
+CD mock candidates (`/mock`) have their own accounts and only see their own tests and reports.
 
 Students who sign up only ever see the student app; opening a panel's address sends them back to
 their dashboard. Teachers opening an admin page land in their own panel.
@@ -253,6 +291,9 @@ npm run dev                 # http://localhost:3000
 
 New students can register at `/register` with the code `DEMO24`; new centers at `/register/center`.
 
+CD IELTS mock candidates (`/mock?c=bright-future`, PIN `1234`): `100001` Aziza Karimova and `100002`
+Dilshod Yusupov, who has a finished test waiting for marking.
+
 ### Environment variables
 
 | Variable | Required | Description |
@@ -342,6 +383,8 @@ src/
   app/onboarding/        grade, goal and group setup after sign-up
   app/(app)/             student area (dashboard, assignments, journal, roadmap, questions, tests, …)
   app/c/                 each center's public website and its trial lesson form
+  app/mock/              CD IELTS mock: candidate site, exam, reports, and the staff area (admin/)
+  app/api/mock/          exam saving and timing, uploads, recordings and pictures
   app/(exam)/            distraction-free test runner
   app/admin/             center admin panel (its staff pages are shared with the teacher panel)
   app/teacher/           teacher panel: layout plus re-exports of the shared staff pages
@@ -350,6 +393,7 @@ src/
   components/            UI kit, charts, app shell
   lib/                   auth/session, subjects, quiz grading, stats, tests, journal, assignments,
                          mastery, website, AI settings
+  lib/mock/              CD mock: question format, band scores, AI Writing estimate, sample test
   lib/i18n/              English / Uzbek text (messages/*.ts), language cookie, formatters
   proxy.ts               optimistic auth redirect
 scripts/
@@ -363,6 +407,8 @@ scripts/
 
 ## Content notes
 
-All seeded questions, passages and lessons are original. Math and science questions are generated
+All seeded questions, passages and lessons are original, and so is the CD IELTS sample test
+(passages, recordings' scripts, questions and the Writing chart); it is not taken from any
+published IELTS material. Math and science questions are generated
 from templates whose answer keys are computed from the same numbers they print. University figures
 are approximate and should be refreshed each admissions cycle from official sources.

@@ -1,6 +1,6 @@
 // Automatic updates for copies of BIS Learn installed from a zip file. The launcher asks GitHub for
 // the newest version of the main branch, downloads it and replaces the program files. Your data —
-// the database (prisma/dev.db), .env, node_modules and the built site — is never touched.
+// the database (prisma/dev.db), uploaded files (data/), .env, node_modules and the built site — is never touched.
 // Turn updates off with BIS_UPDATES="off" in .env. Folders with a .git directory are skipped: use git pull there.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, chmodSync } from "node:fs";
 import https from "node:https";
@@ -13,7 +13,7 @@ export const BRANCH = process.env.BIS_UPDATE_BRANCH || "main";
 
 // Never written by an update: your data and settings, generated folders, and the start-here files,
 // which are still running while the update happens (Windows and bash read them line by line).
-const KEEP = [/^\.env$/, /^prisma\/[^/]+\.db(-journal)?$/, /^node_modules\//, /^\.next\//, /^\.git\//, /^START-HERE-/, /^\.bis-version\.json$/];
+const KEEP = [/^\.env$/, /^prisma\/[^/]+\.db(-journal)?$/, /^data\//, /^node_modules\//, /^\.next\//, /^\.git\//, /^START-HERE-/, /^\.bis-version\.json$/];
 const kept = (file) => KEEP.some((re) => re.test(file));
 
 export function updatesOff() {

@@ -14,7 +14,7 @@ export type SessionPayload = {
 const COOKIE = "session";
 const MAX_AGE_DAYS = 30;
 
-function key() {
+export function key() {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error("SESSION_SECRET must be set to at least 32 characters");
@@ -44,7 +44,7 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
  * Secure cookies only when the page was served over https. On http://localhost or a local network
  * address (the start-here launchers) a Secure cookie would be dropped by some browsers.
  */
-async function servedOverHttps() {
+export async function servedOverHttps() {
   const proto = (await headers()).get("x-forwarded-proto");
   return proto ? proto.split(",")[0].trim() === "https" : process.env.NODE_ENV === "production";
 }

@@ -136,6 +136,7 @@ export const nav = defineMessages({
     assignments: "Assignments",
     website: "Website",
     leads: "Applications",
+    cdMock: "CD IELTS mock",
   },
   uz: {
     dashboard: "Bosh sahifa",
@@ -173,6 +174,7 @@ export const nav = defineMessages({
     assignments: "Topshiriqlar",
     website: "Veb-sayt",
     leads: "Arizalar",
+    cdMock: "CD IELTS mock",
   },
 });
 
